@@ -7,6 +7,8 @@
 ## Setup
 This tool has been designed for use with minimal setup from users. You are able to run it in the cloud and any dependencies with other packages will be installed for you automatically.
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Sydney-Informatics-Hub/HASS-29_Quotation_Tool/main?labpath=quote_extractor_notebook.ipynb)
+
 ## Load the data
 <table style='margin-left: 10px'><tr>
 <td> <img width='45' src='./img/txt_icon.png'/> </td>

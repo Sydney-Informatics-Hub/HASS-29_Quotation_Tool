@@ -229,9 +229,11 @@ class QuotationTool():
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
             create_tree: option to create parse tree files for the quotes 
         '''
-        # create an output folder and specify the file path if create_tree=True
+        # create an output folder if not already exist
+        os.makedirs('output', exist_ok=True)
+        
+        # create a tree folder and specify the file path if create_tree=True
         if create_tree:
-            os.makedirs('output', exist_ok=True)
             os.makedirs('output/trees', exist_ok=True)
             #tree_dir = './output/trees/'
             OUTPUT_DIRECTORY = './output/trees/'
