@@ -24,7 +24,7 @@ Once your files have been uploaded, you can use the QuotationTool to extract quo
 
 <img width='740' src='./img/quotes_df.png'/> 
 
-Additionally, using the interactive tool, you can display the text, along with the extracted quotes, speakers and named entities inside the Notebook for further analysis.
+Additionally, using the interactive tool, you can display the text, along with the extracted quotes, speakers and named entities, on the Notebook for further analysis.
 
 <img width='740' src='./img/quote_display.png'/>
 
