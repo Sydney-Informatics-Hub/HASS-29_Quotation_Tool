@@ -428,15 +428,18 @@ class QuotationTool():
         most_ent = Counter([ent_name for ent_name, ent_label in most_ent])
         top_ent = dict(most_ent.most_common()[:top_n])
         
-        # visualize the top entities
-        text_name = self.quotes_df[self.quotes_df['text_id']==text_id]['text_name'].to_list()[0]
-        bar_colors = {'speaker_entities':'#2eb82e',
-                      'quote_entities':'#008ae6'}
-        plt.figure(figsize=(10, 2.5))
-        plt.bar(top_ent.keys(), top_ent.values(), color=bar_colors[which_ent])
-        plt.yticks(range(0, most_ent[max(most_ent, key=most_ent.get)]+1, 1))
-        plt.title('Top {} {} in {}'.format(min(top_n,len(top_ent.keys())),which_ent,text_name))
-        plt.show()
+        if top_ent!={}:
+            # visualize the top entities
+            text_name = self.quotes_df[self.quotes_df['text_id']==text_id]['text_name'].to_list()[0]
+            bar_colors = {'speaker_entities':'#2eb82e',
+                          'quote_entities':'#008ae6'}
+            plt.figure(figsize=(10, 2.5))
+            plt.bar(top_ent.keys(), top_ent.values(), color=bar_colors[which_ent])
+            plt.yticks(range(0, most_ent[max(most_ent, key=most_ent.get)]+1, 1))
+            plt.title('Top {} {} entities in {}'.format(min(top_n,len(top_ent.keys())),which_ent[:-9],text_name))
+            plt.show()
+        else:
+            print('No entities identified in the {}s.'.format(which_ent[:-9]))
         
 
     def analyse_quotes(self, inc_ent):
