@@ -20,7 +20,7 @@ Using this tool, you can extract quotes directly from a text file (or a number o
 
 
 ## Extract and Display the Quotes
-Once your files have been uploaded, you can use the QuotationTool to extract quotes from the text. The quotes, along with their metadata, will be stored in a table format in a pandas dataframe. 
+Once your files have been uploaded, you can use the QuotationTool to extract quotes from the text. The quotes, along with their metadata, will be stored in a table format inside a pandas dataframe. 
 
 <img width='740' src='./img/quotes_df.png'/> 
 
