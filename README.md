@@ -2,10 +2,10 @@
 
 ## Sydney Informatics Hub
 
-<b>Abstract:</b> This QuotationTool can be used to extract quotes in a text. In addition to extracting the quotes, the tool also provides information about who the speakers are, the location of the quotes (and the speakers) within the text, the identified named entities, etc., which can be useful for your text analysis.
+<b>Abstract:</b> This QuotationTool can be used to extract quotes from a text. In addition to extracting the quotes, the tool also provides information about who the speakers are, the location of the quotes (and the speakers) within the text, the identified named entities, etc., which can be useful for your text analysis.
 
 ## Setup
-This tool has been designed for use with minimal setup from users. You are able to run it in the cloud and any dependencies with other packages will be installed for you automatically. You just need to click the below icon to launch and use the tool.
+This tool has been designed for use with minimal setup from users. You are able to run it in the cloud and any dependencies with other packages will be installed for you automatically. In order to launch and use the tool, you just need to click the below icon.
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Sydney-Informatics-Hub/HASS-29_Quotation_Tool/main?labpath=quote_extractor_notebook.ipynb)
 
@@ -24,7 +24,7 @@ Once your files have been uploaded, you can use the QuotationTool to extract quo
 
 <img width='740' src='./img/quotes_df.png'/> 
 
-Subsequently, using the interactive tool, you can display your text, the extracted quotes, speakers and named entities for further analysis.
+Additionally, using the interactive tool, you can display the text, along with the extracted quotes, speakers and named entities inside the Notebook for further analysis.
 
 <img width='740' src='./img/quote_display.png'/>
 
