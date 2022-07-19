@@ -82,7 +82,6 @@ class QuotationTool():
         self.text_df = None
         self.quotes_df = None
         
-        
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
             description='Upload your files (txt, csv or xlsx)',
@@ -688,6 +687,7 @@ class QuotationTool():
         
         return enter_text, text
     
+    
     def select_entity_widget(self, entity=False):
         '''
         Create widgets for selecting which entities to preview, 
@@ -734,6 +734,7 @@ class QuotationTool():
                 )
         
         return entity_options, speaker_box, quote_box, ne_box
+    
     
     def click_button_widget(self, desc, margin='10px 0px 0px 10px'):
         '''
