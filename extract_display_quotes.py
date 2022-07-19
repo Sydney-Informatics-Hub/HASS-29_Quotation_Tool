@@ -198,7 +198,7 @@ class QuotationTool():
         Pre-process uploaded .txt files into pandas dataframe
 
         Args:
-            txt_upload: the uploaded .txt files from upload_files()
+            deduplication: option to deduplicate text_df by text_id
         '''
         # create an empty list for a placeholder to store all the texts
         all_data = []
@@ -335,7 +335,7 @@ class QuotationTool():
         Display speakers, quotes and named entities inside the text using displaCy
 
         Args:
-            text_id: the text_id of the text you wish to display
+            text_name: the text_name of the text you wish to display
             show_what: options to display speakers, quotes or named entities
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
@@ -578,6 +578,36 @@ class QuotationTool():
         
         return vbox
     
+    
+    def top_entities(self, text_name, which_ent, ent_type, top_n=5):
+        '''
+        Display top n named entities identified in the speakrs and/or quotes
+
+        Args:
+            text_name: the text_name of the text you wish to display
+            which_ent: option to display named entities in speakers and/or quotes
+            ent_type: choose whether to display entity names or types
+            top_n: the number of top entities to display
+        '''
+        # specify the text to analyse ('all texts' or each text individually)
+        if text_name=='all texts':
+            most_ent = self.quotes_df[which_ent].to_list()
+        else:
+            most_ent = self.quotes_df[self.quotes_df['text_name']==text_name][which_ent].tolist()
+        
+        # get the top n entities from the selected text
+        most_ent = list(filter(None,most_ent))
+        most_ent = [ent for most in most_ent for ent in most]
+        if ent_type=='name':
+            most_ent = Counter([ent_name for ent_name, ent_label in most_ent])
+        if ent_type=='label':
+            most_ent = Counter([ent_label for ent_name, ent_label in most_ent])        
+        top_ent = dict(sorted(most_ent.items(), key=lambda x: x[1], reverse=False)[-top_n:])
+        
+        # visualize them
+        self.visualize_entities(text_name, which_ent, ent_type, top_n, top_ent)
+    
+    
     def visualize_entities(self, text_name, which_ent, ent_type, top_n, top_ent):
         '''
         Create a horizontal bar plot for displaying top n named entities in the speakrs and/or quotes
@@ -625,35 +655,6 @@ class QuotationTool():
             print('No entities identified in the {}s.'.format(which_ent[:-9]))
         
         
-    def top_entities(self, text_name, which_ent, ent_type, top_n=5):
-        '''
-        Display top n named entities identified in the speakrs and/or quotes
-
-        Args:
-            text_name: the text_name of the text you wish to display
-            which_ent: option to display named entities in speakers and/or quotes
-            ent_type: choose whether to display entity names or types
-            top_n: the number of top entities to display
-        '''
-        # specify the text to analyse ('all texts' or each text individually)
-        if text_name=='all texts':
-            most_ent = self.quotes_df[which_ent].to_list()
-        else:
-            most_ent = self.quotes_df[self.quotes_df['text_name']==text_name][which_ent].tolist()
-        
-        # get the top n entities from the selected text
-        most_ent = list(filter(None,most_ent))
-        most_ent = [ent for most in most_ent for ent in most]
-        if ent_type=='name':
-            most_ent = Counter([ent_name for ent_name, ent_label in most_ent])
-        if ent_type=='label':
-            most_ent = Counter([ent_label for ent_name, ent_label in most_ent])        
-        top_ent = dict(sorted(most_ent.items(), key=lambda x: x[1], reverse=False)[-top_n:])
-        
-        # visualize them
-        self.visualize_entities(text_name, which_ent, ent_type, top_n, top_ent)
-    
-    
     def select_text_widget(self, entity=False):
         '''
         Create widgets for selecting text_name to analyse
@@ -735,7 +736,7 @@ class QuotationTool():
         
         return entity_options, speaker_box, quote_box, ne_box
     
-    
+        
     def click_button_widget(self, desc, margin='10px 0px 0px 10px'):
         '''
         Create a widget to show the button to click
