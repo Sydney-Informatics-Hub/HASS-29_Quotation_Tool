@@ -45,7 +45,7 @@ import ipywidgets as widgets
 from ipywidgets import Layout
 from IPython.display import display, Markdown, clear_output
 
-# clone GenderGapTracker GitHub page
+# clone the GenderGapTracker GitHub page
 path  = './'
 clone = 'git clone https://github.com/sfu-discourse-lab/GenderGapTracker'
 os.chdir(path)
@@ -81,10 +81,8 @@ class QuotationTool():
         self.text_df = None
         self.quotes_df = None
         
-        # initiate other required variables
-        self.html = None
-        self.current_text = None
-
+        
+        # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
             description='Upload your files (txt, csv or xlsx)',
             accept='.txt, .xlsx, .csv ', # accepted file extension 
@@ -97,17 +95,34 @@ class QuotationTool():
         # give notification when file is uploaded
         def _cb(change):
             with self.upload_out:
+                # clear output and give notification that file is being uploaded
                 clear_output()
                 print('Uploading files...')
-                try:
-                    self.process_upload(deduplication=True)
-                    print('Finished uploading files.')
-                    print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
-                except:
-                    print('Please upload your text file in the above cell!')
+                
+                # check file size and give warning if the file size is >30k bytes
+                file_size=0
+                for item in list(self.file_uploader.value.values()):
+                    file_size +=item['metadata']['size']
+                if file_size>30000:
+                    print('This may take a while...')
+                
+                # begin deduplication and pre-processing uploaded files
+                self.process_upload(deduplication=True)
+                
+                # give notification when uploading is finished
+                print('Finished uploading files.')
+                print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
             
+        # observe when file is uploaded and display output
         self.file_uploader.observe(_cb, names='data')
         self.upload_box = widgets.VBox([self.file_uploader, self.upload_out])
+        
+        # initiate other required variables
+        self.html = None
+        self.current_text = None
+        
+        # create an output folder if not already exist
+        os.makedirs('output', exist_ok=True)
 
 
     def load_txt(self, value):
@@ -139,12 +154,12 @@ class QuotationTool():
         if file_fmt == 'xlsx':
             temp_df = pd.read_excel(io.BytesIO(value['content']))
             
-        # Check if the column text and text_name present in the table, if not, skip the current spreadsheet
+        # check if the column text and text_name present in the table, if not, skip the current spreadsheet
         if ('text' not in temp_df.columns) or ('text_name' not in temp_df.columns):
             print('File {} does not contain the required header "text" and "text_name"'.format(value['metadata']['name']))
             return []
         
-        # Return a list of dict objects
+        # return a list of dict objects
         temp = temp_df[['text_name', 'text']].to_dict(orient='index').values()
         
         return temp
@@ -188,6 +203,7 @@ class QuotationTool():
         # create an empty list for a placeholder to store all the texts
         all_data = []
         
+        # read and store the uploaded files
         for file in self.file_uploader.value.keys():
             if file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
@@ -196,8 +212,8 @@ class QuotationTool():
                     file_fmt=file.lower().split('.')[-1])
             all_data.extend(text_dic)
         
+        # convert them into a pandas dataframe format, add unique id and pre-process text
         uploaded_df = pd.DataFrame.from_dict(all_data)
-
         uploaded_df = self.hash_gen(uploaded_df)
         uploaded_df = self.nlp_preprocess(uploaded_df)
         self.text_df = pd.concat([self.text_df, uploaded_df])
@@ -225,7 +241,7 @@ class QuotationTool():
                     ]
         
 
-    def get_quotes(self, inc_ent, create_tree=False):
+    def get_quotes(self, inc_ent):
         '''
         Extract quotes and their meta-data (quote_id, quote_index, etc.) from the text
         and return as a pandas dataframe
@@ -233,19 +249,7 @@ class QuotationTool():
         Args:
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
-            create_tree: option to create parse tree files for the quotes 
         '''
-        # create an output folder if not already exist
-        os.makedirs('output', exist_ok=True)
-        
-        # create a tree folder and specify the file path if create_tree=True
-        if create_tree:
-            os.makedirs('output/trees', exist_ok=True)
-            #tree_dir = './output/trees/'
-            OUTPUT_DIRECTORY = './output/trees/'
-        else:
-            tree_dir = None
-    
         # create an empty list to store all detected quotes
         all_quotes = []
         
@@ -258,10 +262,9 @@ class QuotationTool():
             try:        
                 # extract the quotes
                 quotes = extract_quotes(doc_id=text_id, doc=doc, 
-                                        write_tree=create_tree)#, 
-                                        #tree_dir=tree_dir)
+                                        write_tree=False)
                 
-                # extract the included named entities
+                # extract the named entities
                 speaks, qts = [quote['speaker'] for quote in quotes], [quote['quote'] for quote in quotes]
                 speak_ents = self.extract_inc_ent(speaks, doc, inc_ent)
                 quote_ents = self.extract_inc_ent(qts, doc, inc_ent)
@@ -300,7 +303,7 @@ class QuotationTool():
         return self.quotes_df
     
     
-    def show_entities(self, spacy_doc, selTokens, inc_ent):
+    def add_entities(self, spacy_doc, selTokens, inc_ent):
         '''
         Add included named entities to displaCy code
 
@@ -310,7 +313,7 @@ class QuotationTool():
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
         '''
-        # empty loist to hold entities code
+        # empty list to hold entities code
         ent_code_list = []
         
         # create span code for entities
@@ -327,7 +330,7 @@ class QuotationTool():
         return ent_code
     
     
-    def show_quotes(self, text_id, show_what, inc_ent):
+    def show_quotes(self, text_name, show_what, inc_ent):
         '''
         Display speakers, quotes and named entities inside the text using displaCy
 
@@ -371,15 +374,15 @@ class QuotationTool():
                    'top_offset_step':14}
         
         # get the spaCy text 
-        doc = self.text_df[self.text_df['text_id']==text_id]['spacy_text'].to_list()[0]
+        doc = self.text_df[self.text_df['text_name']==text_name]['spacy_text'].to_list()[0]
         
         # create a mapping dataframe between the character index and token index from the spacy text.
         loc2tok_df = pd.DataFrame([(t.idx, t.i) for t in doc], columns = ['loc', 'token'])
     
         # get the quotes and speakers indexes
         locs = {
-            'QUOTE': self.quotes_df[self.quotes_df['text_id']==text_id]['quote_index'].tolist(),
-            'SPEAKER': set(self.quotes_df[self.quotes_df['text_id']==text_id]['speaker_index'].tolist())
+            'QUOTE': self.quotes_df[self.quotes_df['text_name']==text_name]['quote_index'].tolist(),
+            'SPEAKER': set(self.quotes_df[self.quotes_df['text_name']==text_name]['speaker_index'].tolist())
         }
     
         # create the displaCy code to visualise quotes and speakers
@@ -393,13 +396,13 @@ class QuotationTool():
                     
                     # option to display named entities only
                     if show_what==['NAMED ENTITIES']:
-                        ent_code = self.show_entities(doc, selTokens, inc_ent)
+                        ent_code = self.add_entities(doc, selTokens, inc_ent)
                         my_code_list.insert(1,ent_code)
                     
                     # option to display speaker and/or quotes and/or named entities
                     elif key in show_what:
                         if 'NAMED ENTITIES' in show_what:
-                            ent_code = self.show_entities(doc, selTokens, inc_ent)
+                            ent_code = self.add_entities(doc, selTokens, inc_ent)
                             my_code_list.insert(1,ent_code)
                         
                         start_token, end_token = selTokens[0], selTokens[-1] 
@@ -416,65 +419,7 @@ class QuotationTool():
         displacy.render(doc, style='span', options=options, jupyter=True)
         self.html = displacy.render(doc, style='span', options=options, jupyter=False, page=True)
         
-    def visualize_entities(self, text_name, which_ent, ent_type, top_n, top_ent, most_ent):
-        if top_ent!={}:
-            # visualize the top entities            
-            bar_colors = {'speaker_entities':'#2eb82e',
-                          'quote_entities':'#008ae6'}
-            ent_types = {'name': 'entity names',
-                         'label': 'entity types'}
-            display_height = top_n/2#min(650,top_n*len(max(top_ent.keys(), key=len))/4)
-            #print('display_width:',display_width)
-            display_width = top_n/1.5
-            range_tick = max(1,round(max(top_ent.values())/5))
-            #plt.figure(figsize=(max(2.5,display_width), max(10,display_height)))
-            
-            
-            
-            plt.figure(figsize=(10, max(5,display_height)))
-            plt.barh(list(top_ent.keys()), list(top_ent.values()), color=bar_colors[which_ent])
-            for i, v in enumerate(list(top_ent.values())):
-                plt.text(v+(len(str(v))*0.05), i, str(v), fontsize=12)
-            plt.yticks(fontsize=12)
-            plt.xticks(range(0, max(top_ent.values())+range_tick, range_tick), fontsize=12)
-            plt.title('Top {} {} entities ({}) in {}'.format(min(top_n,len(top_ent.keys())),which_ent[:-9],ent_types[ent_type],text_name)
-                      , fontsize=14)
-            plt.show()
-        else:
-            print('No entities identified in the {}s.'.format(which_ent[:-9]))
-        
-        
-    def top_entities(self, text_id, which_ent, ent_type, top_n=5):
-        '''
-        Display top n named entities inside the text using displaCy
-
-        Args:
-            text_id: the text_id of the text you wish to display
-            which_ent: option to display named entities in speakers ('speaker_entities') 
-                       or quotes ('quote_entities')
-            top_n: the number of entities to display
-        '''
-        # get the top entities
-        if text_id=='all':
-            most_ent = self.quotes_df[which_ent].to_list()
-            text_name = 'all texts'
-        else:
-            most_ent = self.quotes_df[self.quotes_df['text_id']==text_id][which_ent].tolist()
-            text_name = self.quotes_df[self.quotes_df['text_id']==text_id]['text_name'].to_list()[0]
-        
-        most_ent = list(filter(None,most_ent))
-        most_ent = [ent for most in most_ent for ent in most]
-        
-        if ent_type=='name':
-            most_ent = Counter([ent_name for ent_name, ent_label in most_ent])
-        if ent_type=='label':
-            most_ent = Counter([ent_label for ent_name, ent_label in most_ent])
-        
-        #top_ent = dict(most_ent.most_common(top_n)
-        top_ent = dict(sorted(most_ent.items(), key=lambda x: x[1], reverse=False)[-top_n:])
-        self.visualize_entities(text_name, which_ent, ent_type, top_n, top_ent, most_ent)
-
-
+    
     def analyse_quotes(self, inc_ent):
         '''
         Interactive tool to display and analyse speakers, quotes and named entities inside the text
@@ -483,76 +428,26 @@ class QuotationTool():
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
         '''
-        # widget for selecting text_id
-        enter_text = widgets.HTML(
-            value='<b>Select which text to preview:</b>',
-            placeholder='',
-            description=''
-            )
+        # widgets to select text_name to preview
+        enter_text, text = self.select_text_widget(entity=False)
         
-        text_options = self.text_df.text_name.to_list() # get the list of text_names
-        text = widgets.Combobox(
-            placeholder='Choose text to analyse...',
-            options=text_options,
-            description='',
-            ensure_option=True,
-            disabled=False,
-            layout = widgets.Layout(width='195px')
-        )
+        # widgets to select which entities to preview, i.e., speakers and/or quotes and/or named entities
+        entity_options, speaker_box, quote_box, ne_box = self.select_entity_widget(entity=True)
         
-        # widgets to select what to preview, i.e., speaker and/or quote and/or named entities
-        entity_options = widgets.HTML(
-            value="<b>Select which entity to show:</b>",
-            placeholder='',
-            description='',
-            )
+        # widgets to show the preview
+        preview_button, preview_out = self.click_button_widget(desc='Preview', margin='10px 0px 0px 10px')
         
-        speaker_box = widgets.Checkbox(
-            value=False,
-            description='Speaker',
-            disabled=False,
-            indent=False,
-            layout=Layout(margin='0px 0px 0px 0px')
-            )
-        
-        quote_box = widgets.Checkbox(
-            value=False,
-            description='Quote',
-            disabled=False,
-            indent=False,
-            layout=Layout(margin='0px 0px 0px 0px')
-            )
-        
-        ne_box = widgets.Checkbox(
-            value=False,
-            description='Named Entities',
-            disabled=False,
-            indent=False,
-            layout=Layout(margin='0px 0px 0px 0px')
-            )
-        
-        # widget to show the preview
-        preview_button = widgets.Button(description='Preview', 
-                                        layout=Layout(margin='10px 0px 0px 10px'),
-                                        style=dict(font_style='italic',
-                                                   font_weight='bold'))
-        preview_out = widgets.Output()
-        
+        # function to define what happens when the preview button is clicked
         def on_preview_button_clicked(_):
-            with top_out:
-                # remove bar plot if previewing new text_id
-                if text.value!=self.current_text:
-                    clear_output()
-                    self.current_text = text.value
-            
+            # what happens when we click the preview_button
             with save_out:
                 clear_output()
             
             with preview_out:                                                                                   
-                # what happens when we click the preview_button
                 clear_output()
                 text_name = text.value
-                text_id = self.quotes_df[self.quotes_df['text_name']==text_name]['text_id'].to_list()[0]
+                
+                # add the selected entities to display
                 show_what = []
                 if speaker_box.value:
                     show_what.append('SPEAKER')
@@ -560,33 +455,31 @@ class QuotationTool():
                     show_what.append('QUOTE')
                 if ne_box.value:
                     show_what.append('NAMED ENTITIES')
+                
+                # provide information in the case no entity is selected
                 if show_what==[]:
                     print('Please select the entities to display!')
                 else:
                     try:
-                        self.show_quotes(text_id, show_what, inc_ent)
+                        # display the text and the selected entities
+                        self.show_quotes(text_name, show_what, inc_ent)
                     except:
-                        print('Please enter the correct text_id!')
+                        # provide information in the case no text is selected
+                        print('Please select the text to preview')
         
         # link the preview_button with the function
         preview_button.on_click(on_preview_button_clicked)
         
-        # widget to save the preview
-        save_button = widgets.Button(description='Save Preview', 
-                                     layout=Layout(margin='10px 0px 0px 10px'),
-                                     style=dict(font_style='italic',
-                                                font_weight='bold'))
+        # widget to save the above preview
+        save_button, save_out = self.click_button_widget(desc='Save Preview', margin='10px 0px 0px 10px')
         
-        save_out = widgets.Output()
-        
+        # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
             with save_out:
                 try:
-                    # create an output folder if not yet available
-                    os.makedirs('output', exist_ok=True)
+                    # set the output folder for saving
                     out_dir='./output/'
                     text_name = text.value
-                    text_id = self.quotes_df[self.quotes_df['text_name']==text_name]['text_id'].to_list()[0]
                     
                     # save the preview as an html file
                     file = open(out_dir+str(text_name)+'.html', 'w')
@@ -600,21 +493,17 @@ class QuotationTool():
         # link the save_button with the function
         save_button.on_click(on_save_button_clicked)
         
-        # widget to show top 5 entities
-        top_button = widgets.Button(description='Top 5 Entities', 
-                                     layout=Layout(margin='10px 0px 0px 10px'),
-                                     style=dict(font_style='italic',
-                                                font_weight='bold'))
-        top_out = widgets.Output()
+        # widgets for displaying inputs, buttons and outputs
+        vbox2 = widgets.VBox([enter_text, text], 
+                             layout = widgets.Layout(width='300px'))
+        vbox1 = widgets.VBox([entity_options, speaker_box, quote_box, ne_box],
+                             layout = widgets.Layout(width='300px'))
         
-        # displaying buttons and their outputs
-        vbox1 = widgets.VBox([enter_text, text, entity_options, speaker_box, quote_box, ne_box,
-                              preview_button, save_button])
-        
-        hbox = widgets.HBox([vbox1])
-        vbox = widgets.VBox([hbox, save_out, preview_out])
+        hbox = widgets.HBox([vbox1, vbox2])
+        vbox = widgets.VBox([hbox, preview_button, save_button, save_out, preview_out])
         
         return vbox
+    
     
     def analyse_entities(self, inc_ent):
         '''
@@ -624,17 +513,171 @@ class QuotationTool():
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
         '''
-        # widget for selecting text_id
+        # widgets for selecting text_name to analyse
+        enter_text, text = self.select_text_widget(entity=True)
+        
+        # widgets for selecting whether to display entities in speakers and/or quotes
+        entity_options, speaker_box, quote_box, ne_box = self.select_entity_widget()
+        
+        # widgets for selecting whether to display entity names and/or types
+        label_options, name_box, entity_box = self.name_or_type_widget()
+        
+        # widgets for selecting the number of entities to display
+        enter_n, top_n_option = self.select_n_widget()
+
+        # widget to show top entities
+        top_button, top_out = self.click_button_widget(desc='Show Top Entities', margin='30px 0px 0px 0px')
+        
+        # function to define what happens when the top button is clicked
+        def on_top_button_clicked(_):
+            with top_out:
+                clear_output()
+                text_name = text.value
+                top_n = top_n_option.value
+                
+                # process the selected quote and/or speaker entities
+                which_ents=[]; ent_types=[]
+                if quote_box.value:
+                    which_ents.append('quote_entities')
+                if speaker_box.value:
+                    which_ents.append('speaker_entities')
+                if which_ents==[]:
+                    print('Please select whether to display entities in the speakers and/or quotes!')
+                
+                # process the selected entity names and/or types
+                if name_box.value:
+                    ent_types.append('name')
+                if entity_box.value:
+                    ent_types.append('label')
+                if ent_types==[]:
+                    print('Please select whether to display entity names and/or types!')
+                
+                # display the selections
+                for ent_type in ent_types:
+                    for which_ent in which_ents:
+                        self.top_entities(text_name, which_ent, ent_type, top_n)
+
+        # link the top_button with the function
+        top_button.on_click(on_top_button_clicked)
+        
+        # displaying inputs, buttons and their outputs
+        vbox1 = widgets.VBox([enter_text, text], 
+                             layout = widgets.Layout(width='300px'))
+        vbox2 = widgets.VBox([entity_options, speaker_box, quote_box], 
+                             layout = widgets.Layout(width='300px'))
+        vbox3 = widgets.VBox([label_options, name_box, entity_box], 
+                             layout = widgets.Layout(width='350px'))
+        vbox4 = widgets.VBox([enter_n, top_n_option], 
+                             layout = widgets.Layout(width='250px', height='80px'))
+        
+        hbox1 = widgets.HBox([vbox2, vbox3, vbox4])
+        hbox2 = widgets.HBox([vbox1, top_button],
+                             layout=Layout(margin='15px 0px 20px 0px'))
+        
+        vbox = widgets.VBox([hbox1, hbox2, top_out])
+        
+        return vbox
+    
+    def visualize_entities(self, text_name, which_ent, ent_type, top_n, top_ent):
+        '''
+        Create a horizontal bar plot for displaying top n named entities in the speakrs and/or quotes
+
+        Args:
+            text_name: the text_name of the text you wish to display
+            which_ent: option to display named entities in speakers and/or quotes
+            ent_type: choose whether to display entity names or types
+            top_n: the number of top entities to display
+            top_ent: the top entities to display
+        '''
+        if top_ent!={}:
+            # define color formatting and option for entity names/types            
+            bar_colors = {'speaker_entities':'#2eb82e',
+                          'quote_entities':'#008ae6'}
+            ent_types = {'name': 'entity names',
+                         'label': 'entity types'}
+            
+            # specify the width, height and tick range for the plot
+            display_width = top_n/1.5
+            display_height = top_n/2
+            range_tick = max(1,round(max(top_ent.values())/5))
+            
+            # visualize the entities using horizontal bar plot
+            plt.figure(figsize=(10, max(5,display_height)))
+            plt.barh(list(top_ent.keys()), list(top_ent.values()), color=bar_colors[which_ent])
+            
+            # display the values on the bars
+            for i, v in enumerate(list(top_ent.values())):
+                plt.text(v+(len(str(v))*0.05), i, str(v), fontsize=12)
+            
+            # specify xticks, yticks and title
+            plt.xticks(range(0, max(top_ent.values())+range_tick, range_tick), fontsize=12)
+            plt.yticks(fontsize=12)
+            plt.title('Top {} {} entities ({}) in {}'.format(min(top_n,len(top_ent.keys())),
+                                                             which_ent[:-9],
+                                                             ent_types[ent_type],
+                                                             text_name), 
+                      fontsize=14)
+            plt.show()
+        elif text_name=='':
+            print('Please select the text to analyse')
+        else:
+            # this will provide some information where no entities identified
+            print('No entities identified in the {}s.'.format(which_ent[:-9]))
+        
+        
+    def top_entities(self, text_name, which_ent, ent_type, top_n=5):
+        '''
+        Display top n named entities identified in the speakrs and/or quotes
+
+        Args:
+            text_name: the text_name of the text you wish to display
+            which_ent: option to display named entities in speakers and/or quotes
+            ent_type: choose whether to display entity names or types
+            top_n: the number of top entities to display
+        '''
+        # specify the text to analyse ('all texts' or each text individually)
+        if text_name=='all texts':
+            most_ent = self.quotes_df[which_ent].to_list()
+        else:
+            most_ent = self.quotes_df[self.quotes_df['text_name']==text_name][which_ent].tolist()
+        
+        # get the top n entities from the selected text
+        most_ent = list(filter(None,most_ent))
+        most_ent = [ent for most in most_ent for ent in most]
+        if ent_type=='name':
+            most_ent = Counter([ent_name for ent_name, ent_label in most_ent])
+        if ent_type=='label':
+            most_ent = Counter([ent_label for ent_name, ent_label in most_ent])        
+        top_ent = dict(sorted(most_ent.items(), key=lambda x: x[1], reverse=False)[-top_n:])
+        
+        # visualize them
+        self.visualize_entities(text_name, which_ent, ent_type, top_n, top_ent)
+    
+    
+    def select_text_widget(self, entity=False):
+        '''
+        Create widgets for selecting text_name to analyse
+
+        Args:
+            entity: option to include 'all texts' for analysing top entities
+        '''
+        # widget to display instruction
         enter_text = widgets.HTML(
-            value='<b>Select which text to preview:</b>',
+            value='<b>Select the text to analyse:</b>',
             placeholder='',
             description=''
             )
         
+        # use text_name for text_options
         text_options = self.text_df.text_name.to_list() # get the list of text_names
-        text_options.insert(0, 'all')
+        
+        # the option to select 'all texts' for analysing top entities
+        if entity:
+            text_options.insert(0, 'all texts')
+        
+        # widget to display text_options
         text = widgets.Combobox(
-            placeholder='all',
+            placeholder='Choose text to analyse...',
             options=text_options,
             description='',
             ensure_option=True,
@@ -642,13 +685,26 @@ class QuotationTool():
             layout = widgets.Layout(width='195px')
         )
         
-        # widgets to select what to preview, i.e., speaker and/or quote and/or named entities
+        return enter_text, text
+    
+    def select_entity_widget(self, entity=False):
+        '''
+        Create widgets for selecting which entities to preview, 
+        i.e., speakers and/or quotes and/or named entities
+
+        Args:
+            entity: option to include a check box for displaying named entities
+        '''
+        ne_box = None
+        
+        # widget to display instruction
         entity_options = widgets.HTML(
             value="<b>Select which entity to show:</b>",
             placeholder='',
             description='',
             )
         
+        # widget to display speaker check box
         speaker_box = widgets.Checkbox(
             value=False,
             description='Speaker',
@@ -657,6 +713,7 @@ class QuotationTool():
             layout=Layout(margin='0px 0px 0px 0px')
             )
         
+        # widget to display speaker quote box
         quote_box = widgets.Checkbox(
             value=False,
             description='Quote',
@@ -665,11 +722,50 @@ class QuotationTool():
             layout=Layout(margin='0px 0px 0px 0px')
             )
         
+        # widget to display named entity check box
+        if entity:
+            ne_box = widgets.Checkbox(
+                value=False,
+                description='Named Entities',
+                disabled=False,
+                indent=False,
+                layout=Layout(margin='0px 0px 0px 0px')
+                )
+        
+        return entity_options, speaker_box, quote_box, ne_box
+    
+    def click_button_widget(self, desc, margin='10px 0px 0px 10px'):
+        '''
+        Create a widget to show the button to click
+        
+        Args:
+            desc: description to display on the button widget
+            margin: top, right, bottom and left margins for the button widget
+        '''
+        # widget to show the button to click
+        button = widgets.Button(description=desc, 
+                                layout=Layout(margin=margin),
+                                style=dict(font_style='italic',
+                                           font_weight='bold'))
+        
+        # the output after clicking the button
+        out = widgets.Output()
+        
+        return button, out
+        
+    
+    def name_or_type_widget(self):
+        '''
+        Create widgets for selecting whether to display entity names and/or types
+        '''
+        # widget to display instruction
         label_options = widgets.HTML(
-            value="<b>Select what you want to display:</b>",
+            value="<b>Display entity names and/or types:</b>",
             placeholder='',
             description='',
             )
+        
+        # widget to display entity names box
         name_box = widgets.Checkbox(
             value=False,
             description='Entity names (e.g., John Doe, Sydney, etc.)',
@@ -678,74 +774,37 @@ class QuotationTool():
             layout=Layout(margin='0px 0px 0px 0px')
             )
         
+        # widget to display entity types box
         entity_box = widgets.Checkbox(
             value=False,
-            description='Entity types (e.g., PERSON, ORG, etc.)',
+            description='Entity types (e.g., PERSON, LOC, etc.)',
             disabled=False,
             indent=False,
             layout=Layout(margin='0px 0px 0px 0px')
             )
         
+        return label_options, name_box, entity_box
+    
+    
+    def select_n_widget(self):
+        '''
+        Create widgets for selecting the number of entities to display
+        '''
+        # widget to display instruction
         enter_n = widgets.HTML(
-            value='<b>How many entities to display:</b>',
+            value='<b>The number of top entities to display:</b>',
             placeholder='',
             description=''
             )
         
+        # widgets for selecting the number of top entities
         top_n_option = widgets.BoundedIntText(
             value=5,
             min=0,
-            #max=1000,
             step=5,
             description='',
             disabled=False,
-            layout = widgets.Layout(width='100px')
+            layout = widgets.Layout(width='150px')
         )
-                
-        # widget to show top 5 entities
-        top_button = widgets.Button(description='Show Top Entities', 
-                                     layout=Layout(margin='10px 0px 0px 10px'),
-                                     style=dict(font_style='italic',
-                                                font_weight='bold'))
-        top_out = widgets.Output()
         
-        def on_top_button_clicked(_):
-            with top_out:
-                # what happens when we click the top_button
-                clear_output()
-                text_name = text.value
-                top_n = top_n_option.value
-                if text_name=='all':
-                    text_id='all'
-                else:
-                    text_id = self.quotes_df[self.quotes_df['text_name']==text_name]['text_id'].to_list()[0]
-                which_ents=[]; ent_types=[]
-                try:
-                    if quote_box.value:
-                        which_ents.append('quote_entities')
-                    if speaker_box.value:
-                        which_ents.append('speaker_entities')
-                    if name_box.value:
-                        ent_types.append('name')
-                    if entity_box.value:
-                        ent_types.append('label')
-                    for ent_type in ent_types:
-                        for which_ent in which_ents:
-                            self.top_entities(text_id, which_ent, ent_type, top_n)
-                except:
-                    print('Please select which entities to display and whether to display actual or entity names!')
-        
-        # link the top_button with the function
-        top_button.on_click(on_top_button_clicked)
-        
-        # displaying buttons and their outputs
-        vbox1 = widgets.VBox([enter_text, text, 
-                              entity_options, speaker_box, quote_box, 
-                              label_options, name_box, entity_box,
-                              enter_n, top_n_option, 
-                              top_button])
-        
-        vbox = widgets.VBox([vbox1, top_out])
-        
-        return vbox
-    
+        return enter_n, top_n_option
