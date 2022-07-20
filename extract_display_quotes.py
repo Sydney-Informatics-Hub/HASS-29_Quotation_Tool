@@ -119,6 +119,7 @@ class QuotationTool():
         
         # initiate other required variables
         self.html = None
+        self.figs = None
         self.current_text = None
         
         # create an output folder if not already exist
@@ -127,7 +128,7 @@ class QuotationTool():
 
     def load_txt(self, value):
         '''
-        Load individual txt file content and return a dict object, 
+        Load individual txt file content and return a dictionary object, 
         wrapped in a list so it can be merged with list of pervious file contents.
         
         Args:
@@ -526,10 +527,12 @@ class QuotationTool():
         enter_n, top_n_option = self.select_n_widget()
 
         # widget to show top entities
-        top_button, top_out = self.click_button_widget(desc='Show Top Entities', margin='30px 0px 0px 0px')
+        top_button, top_out = self.click_button_widget(desc='Show Top Entities', margin='10px 0px 0px 0px')
         
         # function to define what happens when the top button is clicked
         def on_top_button_clicked(_):
+            with save_out:
+                clear_output()
             with top_out:
                 clear_output()
                 text_name = text.value
@@ -552,29 +555,60 @@ class QuotationTool():
                 if ent_types==[]:
                     print('Please select whether to display entity names and/or types!')
                 
+                self.figs = []
                 # display the selections
                 for ent_type in ent_types:
                     for which_ent in which_ents:
-                        self.top_entities(text_name, which_ent, ent_type, top_n)
+                        try:
+                            fig, bar_title = self.top_entities(text_name, which_ent, ent_type, top_n)
+                            self.figs.append([fig, bar_title])
+                        except:
+                            if text_name=='':
+                                print('Please select the text to analyse')
 
         # link the top_button with the function
         top_button.on_click(on_top_button_clicked)
+        
+        # widget to save the above preview
+        save_button, save_out = self.click_button_widget(desc='Save Top Entities', margin='10px 0px 0px 0px')
+        
+        # function to define what happens when the save button is clicked
+        def on_save_button_clicked(_):
+            with save_out:
+                if self.figs!=[]:
+                    # set the output folder for saving
+                    out_dir='./output/'
+                    
+                    # save the top entities as jpg files
+                    for fig, bar_title in self.figs:
+                        file_name = out_dir + bar_title + '.jpg'
+                        fig.savefig(file_name, bbox_inches='tight')
+                    print('Top entities saved!')
+                else:
+                    print('You need to generate the bar charts before you can save them!')
+        
+        # link the save_button with the function
+        save_button.on_click(on_save_button_clicked)
         
         # displaying inputs, buttons and their outputs
         vbox1 = widgets.VBox([enter_text, text], 
                              layout = widgets.Layout(width='300px'))
         vbox2 = widgets.VBox([entity_options, speaker_box, quote_box], 
-                             layout = widgets.Layout(width='300px'))
+                             layout = widgets.Layout(width='300px', height='100px'))
         vbox3 = widgets.VBox([label_options, name_box, entity_box], 
                              layout = widgets.Layout(width='350px'))
         vbox4 = widgets.VBox([enter_n, top_n_option], 
                              layout = widgets.Layout(width='250px', height='80px'))
+        vbox5 = widgets.VBox([top_button, save_button], 
+                             layout = widgets.Layout(width='250px', height='80px'))
         
         hbox1 = widgets.HBox([vbox2, vbox3, vbox4])
-        hbox2 = widgets.HBox([vbox1, top_button],
-                             layout=Layout(margin='15px 0px 20px 0px'))
+        #hbox2 = widgets.HBox([vbox1, top_button, save_button],
+        #                     layout=Layout(margin='15px 0px 20px 0px'))
+        hbox2 = widgets.HBox([vbox1, vbox5],
+                             layout=Layout(margin='5px 0px 20px 0px'))
         
-        vbox = widgets.VBox([hbox1, hbox2, top_out])
+        vbox = widgets.VBox([hbox1, hbox2, save_out, top_out])
         
         return vbox
     
@@ -605,7 +639,9 @@ class QuotationTool():
         top_ent = dict(sorted(most_ent.items(), key=lambda x: x[1], reverse=False)[-top_n:])
         
         # visualize them
-        self.visualize_entities(text_name, which_ent, ent_type, top_n, top_ent)
+        fig, bar_title = self.visualize_entities(text_name, which_ent, ent_type, top_n, top_ent)
+        
+        return fig, bar_title
     
     
     def visualize_entities(self, text_name, which_ent, ent_type, top_n, top_ent):
@@ -632,7 +668,7 @@ class QuotationTool():
             range_tick = max(1,round(max(top_ent.values())/5))
             
             # visualize the entities using horizontal bar plot
-            plt.figure(figsize=(10, max(5,display_height)))
+            fig = plt.figure(figsize=(10, max(5,display_height)))
             plt.barh(list(top_ent.keys()), list(top_ent.values()), color=bar_colors[which_ent])
             
             # display the values on the bars
@@ -642,16 +678,16 @@ class QuotationTool():
             # specify xticks, yticks and title
             plt.xticks(range(0, max(top_ent.values())+range_tick, range_tick), fontsize=12)
             plt.yticks(fontsize=12)
-            plt.title('Top {} {} entities ({}) in {}'.format(min(top_n,len(top_ent.keys())),
+            bar_title = 'Top {} {} entities ({}) in {}'.format(min(top_n,len(top_ent.keys())),
                                                              which_ent[:-9],
                                                              ent_types[ent_type],
-                                                             text_name), 
-                      fontsize=14)
+                                                             text_name)
+            plt.title(bar_title, fontsize=14)
             plt.show()
-        elif text_name=='':
-            print('Please select the text to analyse')
-        else:
-            # this will provide some information where no entities identified
+            
+            return fig, bar_title
+            
+        elif text_name!='':
             print('No entities identified in the {}s.'.format(which_ent[:-9]))
         
         
