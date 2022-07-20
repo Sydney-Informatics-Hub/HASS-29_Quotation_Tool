@@ -603,8 +603,6 @@ class QuotationTool():
                              layout = widgets.Layout(width='250px', height='80px'))
         
         hbox1 = widgets.HBox([vbox2, vbox3, vbox4])
-        #hbox2 = widgets.HBox([vbox1, top_button, save_button],
-        #                     layout=Layout(margin='15px 0px 20px 0px'))
         hbox2 = widgets.HBox([vbox1, vbox5],
                              layout=Layout(margin='5px 0px 20px 0px'))
         
