@@ -517,24 +517,23 @@ class QuotationTool():
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
             with save_out:
-                #try:
-                # set the output folder for saving
-                out_dir='./output/'
-                text_name = text.value
-                
-                # save the preview as an html file
-                file = open(out_dir+str(text_name)+'.html', 'w')
-                file.write(self.html)
-                file.close()
-                clear_output()
-                print('Preview saved!')
-                
-                display(DownloadFileLink(out_dir+str(text_name)+'.html', "Download"))
-                #from IPython.display import FileLink
-                #local_file = FileLink(out_dir+str(text_name)+'.html', result_html_prefix='Click here to download: ')
-                #display(local_file)
-                #except:
-                #    print('You need to generate a preview before you can save it!')
+                try:
+                    # set the output folder for saving
+                    out_dir='./output/'
+                    text_name = text.value
+                    
+                    # save the preview as an html file
+                    file = open(out_dir+str(text_name)+'.html', 'w')
+                    file.write(self.html)
+                    file.close()
+                    clear_output()
+                    print('Preview saved! Click below to download:')
+                    display(DownloadFileLink(out_dir+str(text_name)+'.html', str(text_name)+'.html'))
+                    #from IPython.display import FileLink
+                    #local_file = FileLink(out_dir+str(text_name)+'.html', result_html_prefix='Click here to download: ')
+                    #display(local_file)
+                except:
+                    print('You need to generate a preview before you can save it!')
         
         # link the save_button with the function
         save_button.on_click(on_save_button_clicked)
@@ -624,11 +623,12 @@ class QuotationTool():
                     # set the output folder for saving
                     out_dir='./output/'
                     
+                    print('Top entities saved! Click below to download:')
                     # save the top entities as jpg files
                     for fig, bar_title in self.figs:
                         file_name = out_dir + bar_title + '.jpg'
                         fig.savefig(file_name, bbox_inches='tight')
-                    print('Top entities saved!')
+                        display(DownloadFileLink(file_name, bar_title + '.jpg'))
                 else:
                     print('You need to generate the bar charts before you can save them!')
         
