@@ -517,25 +517,24 @@ class QuotationTool():
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
             with save_out:
-                try:
-                    # set the output folder for saving
-                    out_dir='./output/'
-                    text_name = text.value
-                    
-                    # save the preview as an html file
-                    file = open(out_dir+str(text_name)+'.html', 'w')
-                    file.write(self.html)
-                    file.close()
-                    clear_output()
-                    print('Preview saved!')
-                    from IPython.display import FileLink
-                    import DownloadFileLink
-                    DownloadFileLink(out_dir+str(text_name)+'.html', "Download")
-                    #from IPython.display import FileLink
-                    #local_file = FileLink(out_dir+str(text_name)+'.html', result_html_prefix='Click here to download: ')
-                    #display(local_file)
-                except:
-                    print('You need to generate a preview before you can save it!')
+                #try:
+                # set the output folder for saving
+                out_dir='./output/'
+                text_name = text.value
+                
+                # save the preview as an html file
+                file = open(out_dir+str(text_name)+'.html', 'w')
+                file.write(self.html)
+                file.close()
+                clear_output()
+                print('Preview saved!')
+                
+                display(DownloadFileLink(out_dir+str(text_name)+'.html', "Download"))
+                #from IPython.display import FileLink
+                #local_file = FileLink(out_dir+str(text_name)+'.html', result_html_prefix='Click here to download: ')
+                #display(local_file)
+                #except:
+                #    print('You need to generate a preview before you can save it!')
         
         # link the save_button with the function
         save_button.on_click(on_save_button_clicked)
