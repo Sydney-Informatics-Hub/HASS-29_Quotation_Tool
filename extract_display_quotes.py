@@ -524,6 +524,7 @@ class QuotationTool():
                     # set the output folder for saving
                     out_dir='./output/'
                     text_name = text.value
+                    file_name = '-'.join(text_name.split()) +'.html'
                     
                     # save the preview as an html file
                     file = open(out_dir+str(text_name)+'.html', 'w')
@@ -531,7 +532,7 @@ class QuotationTool():
                     file.close()
                     clear_output()
                     print('Preview saved! Click below to download:')
-                    display(DownloadFileLink(out_dir+str(text_name)+'.html', str(text_name)+'.html'))
+                    display(DownloadFileLink(out_dir+str(text_name)+'.html', file_name))
                 except:
                     print('You need to generate a preview before you can save it!')
         
@@ -626,9 +627,9 @@ class QuotationTool():
                     print('Top entities saved! Click below to download:')
                     # save the top entities as jpg files
                     for fig, bar_title in self.figs:
-                        file_name = out_dir + bar_title + '.jpg'
-                        fig.savefig(file_name, bbox_inches='tight')
-                        display(DownloadFileLink(file_name, bar_title + '.jpg'))
+                        file_name = '-'.join(bar_title.split()) + '.jpg'
+                        fig.savefig(out_dir+file_name, bbox_inches='tight')
+                        display(DownloadFileLink(out_dir+file_name, file_name))
                 else:
                     print('You need to generate the bar charts before you can save them!')
         
