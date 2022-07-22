@@ -528,6 +528,7 @@ class QuotationTool():
                     file.close()
                     clear_output()
                     print('Preview saved!')
+                    from IPython.display import FileLink
                     import DownloadFileLink
                     DownloadFileLink(out_dir+str(text_name)+'.html', "Download")
                     #from IPython.display import FileLink
