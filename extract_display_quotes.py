@@ -43,7 +43,7 @@ from nltk.tokenize import sent_tokenize
 # ipywidgets: tools for interactive browser controls in Jupyter notebooks
 import ipywidgets as widgets
 from ipywidgets import Layout
-from IPython.display import display, Markdown, clear_output
+from IPython.display import display, Markdown, clear_output, FileLink
 
 # clone the GenderGapTracker GitHub page
 path  = './'
@@ -126,7 +126,7 @@ class QuotationTool():
         os.makedirs('output', exist_ok=True)
 
 
-    def load_txt(self, value):
+    def load_txt(self, value: dict) -> list:
         '''
         Load individual txt file content and return a dictionary object, 
         wrapped in a list so it can be merged with list of pervious file contents.
@@ -141,7 +141,7 @@ class QuotationTool():
         return [temp]
 
 
-    def load_table(self, value, file_fmt):
+    def load_table(self, value: dict, file_fmt: str) -> list:
         '''
         Load csv or xlsx file
         
@@ -166,7 +166,7 @@ class QuotationTool():
         return temp
 
 
-    def hash_gen(self, temp_df):
+    def hash_gen(self, temp_df: pd.DataFrame) -> pd.DataFrame:
         '''
         Create column text_id by md5 hash of the text in text_df
         
@@ -178,7 +178,7 @@ class QuotationTool():
         return temp_df
 
 
-    def nlp_preprocess(self, temp_df):
+    def nlp_preprocess(self, temp_df: pd.DataFrame) -> pd.DataFrame:
         '''
         Pre-process text and fit it with Spacy language model into the column "spacy_text"
 
@@ -194,7 +194,7 @@ class QuotationTool():
         return temp_df
 
 
-    def process_upload(self, deduplication=True):    
+    def process_upload(self, deduplication: bool = True):    
         '''
         Pre-process uploaded .txt files into pandas dataframe
 
@@ -225,7 +225,12 @@ class QuotationTool():
             self.text_df.drop_duplicates(subset='text_id', keep='first', inplace=True)
     
     
-    def extract_inc_ent(self, list_of_string, spacy_doc, inc_ent):
+    def extract_inc_ent(
+            self, 
+            list_of_string: list, 
+            spacy_doc: spacy.tokens.doc.Doc, 
+            inc_ent: list
+            ) -> list:
         '''
         Extract included named entities from a list of string
 
@@ -234,7 +239,8 @@ class QuotationTool():
             spacy_doc: spaCy's processed text for the above list of string
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
-        '''       
+        '''
+        
         return [
             [(str(ent), ent.label_) for ent in spacy_doc.ents \
                 if (str(ent) in string) & (ent.label_ in inc_ent)]\
@@ -242,7 +248,7 @@ class QuotationTool():
                     ]
         
 
-    def get_quotes(self, inc_ent):
+    def get_quotes(self, inc_ent: list) -> pd.DataFrame:
         '''
         Extract quotes and their meta-data (quote_id, quote_index, etc.) from the text
         and return as a pandas dataframe
@@ -304,7 +310,12 @@ class QuotationTool():
         return self.quotes_df
     
     
-    def add_entities(self, spacy_doc, selTokens, inc_ent):
+    def add_entities(
+            self, 
+            spacy_doc: spacy.tokens.doc.Doc, 
+            selTokens: list, 
+            inc_ent: list
+            ) -> list:
         '''
         Add included named entities to displaCy code
 
@@ -331,7 +342,12 @@ class QuotationTool():
         return ent_code
     
     
-    def show_quotes(self, text_name, show_what, inc_ent):
+    def show_quotes(
+            self, 
+            text_name: str, 
+            show_what: list, 
+            inc_ent: list
+            ):
         '''
         Display speakers, quotes and named entities inside the text using displaCy
 
@@ -421,7 +437,7 @@ class QuotationTool():
         self.html = displacy.render(doc, style='span', options=options, jupyter=False, page=True)
         
     
-    def analyse_quotes(self, inc_ent):
+    def analyse_quotes(self, inc_ent: list):
         '''
         Interactive tool to display and analyse speakers, quotes and named entities inside the text
 
@@ -487,7 +503,8 @@ class QuotationTool():
                     file.write(self.html)
                     file.close()
                     clear_output()
-                    print('Preview saved!')
+                    print('Preview saved! Click below to download:')
+                    display(DownloadFileLink(out_dir+str(text_name)+'.html', str(text_name)+'.html'))
                 except:
                     print('You need to generate a preview before you can save it!')
         
@@ -506,7 +523,7 @@ class QuotationTool():
         return vbox
     
     
-    def analyse_entities(self, inc_ent):
+    def analyse_entities(self, inc_ent: list):
         '''
         Interactive tool to display and analyse named entities inside the text
 
@@ -579,11 +596,12 @@ class QuotationTool():
                     # set the output folder for saving
                     out_dir='./output/'
                     
+                    print('Top entities saved! Click below to download:')
                     # save the top entities as jpg files
                     for fig, bar_title in self.figs:
                         file_name = out_dir + bar_title + '.jpg'
                         fig.savefig(file_name, bbox_inches='tight')
-                    print('Top entities saved!')
+                        display(DownloadFileLink(file_name, bar_title + '.jpg'))
                 else:
                     print('You need to generate the bar charts before you can save them!')
         
@@ -611,7 +629,13 @@ class QuotationTool():
         return vbox
     
     
-    def top_entities(self, text_name, which_ent, ent_type, top_n=5):
+    def top_entities(
+            self, 
+            text_name: str, 
+            which_ent: str, 
+            ent_type: list, 
+            top_n: int=5
+            ):
         '''
         Display top n named entities identified in the speakrs and/or quotes
 
@@ -642,7 +666,14 @@ class QuotationTool():
         return fig, bar_title
     
     
-    def visualize_entities(self, text_name, which_ent, ent_type, top_n, top_ent):
+    def visualize_entities(
+            self, 
+            text_name: str, 
+            which_ent: str, 
+            ent_type: str, 
+            top_n: int, 
+            top_ent: dict
+            ):
         '''
         Create a horizontal bar plot for displaying top n named entities in the speakrs and/or quotes
 
@@ -689,7 +720,7 @@ class QuotationTool():
             print('No entities identified in the {}s.'.format(which_ent[:-9]))
         
         
-    def select_text_widget(self, entity=False):
+    def select_text_widget(self, entity: bool=False):
         '''
         Create widgets for selecting text_name to analyse
 
@@ -723,7 +754,7 @@ class QuotationTool():
         return enter_text, text
     
     
-    def select_entity_widget(self, entity=False):
+    def select_entity_widget(self, entity: bool=False):
         '''
         Create widgets for selecting which entities to preview, 
         i.e., speakers and/or quotes and/or named entities
@@ -771,7 +802,11 @@ class QuotationTool():
         return entity_options, speaker_box, quote_box, ne_box
     
         
-    def click_button_widget(self, desc, margin='10px 0px 0px 10px'):
+    def click_button_widget(
+            self, 
+            desc: str, 
+            margin: str='10px 0px 0px 10px'
+            ):
         '''
         Create a widget to show the button to click
         
@@ -845,3 +880,27 @@ class QuotationTool():
         )
         
         return enter_n, top_n_option
+    
+    
+    class DownloadFileLink(FileLink):
+    html_link_str = "<a href='{link}' download={file_name}>{link_text}</a>"
+
+    def __init__(self, path, file_name=None, link_text=None, *args, **kwargs):
+        super(DownloadFileLink, self).__init__(path, *args, **kwargs)
+
+        self.file_name = file_name or os.path.split(path)[1]
+        self.link_text = link_text or self.file_name
+
+    def _format_path(self):
+        from html import escape
+
+        fp = "".join([self.url_prefix, escape(self.path)])
+        return "".join(
+            [
+                self.result_html_prefix,
+                self.html_link_str.format(
+                    link=fp, file_name=self.file_name, link_text=self.link_text
+                ),
+                self.result_html_suffix,
+            ]
+        )
