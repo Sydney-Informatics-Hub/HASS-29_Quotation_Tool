@@ -135,10 +135,7 @@ class QuotationTool():
                 print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
             
         # observe when file is uploaded and display output
-        try:
-            self.file_uploader.observe(_cb, names='data')
-        except:
-            print('upload failed')
+        self.file_uploader.observe(_cb, names='data')
         self.upload_box = widgets.VBox([self.file_uploader, self.upload_out])
         
         # initiate other required variables
