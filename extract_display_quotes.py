@@ -109,17 +109,22 @@ class QuotationTool():
         # initiate variables to hold texts and quotes in pandas dataframes
         self.text_df = None
         self.quotes_df = None
+        self.all_data = []
         
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
             description='Upload your files (txt, csv or xlsx)',
             accept='.txt, .xlsx, .csv ', # accepted file extension 
             multiple=True,  # True to accept multiple files
+            error='File upload unsuccessful. Please try again!',
             layout = widgets.Layout(width='320px')
             )
-        
+    
         self.upload_out = widgets.Output()
         
+        with self.upload_out:
+            print('\nClick the below button to pre-process texts:')
+            
         # give notification when file is uploaded
         def _cb(change):
             with self.upload_out:
@@ -127,16 +132,39 @@ class QuotationTool():
                 clear_output()
                 print('Uploading files...')
                 
-                # begin deduplication and pre-processing uploaded files
-                self.process_upload(deduplication=True)
+                # reading uploaded files
+                self.read_upload()
                 
                 # give notification when uploading is finished
-                print('Finished uploading and pre-processing files.')
-                print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
+                #print('Finished uploading and pre-processing files.')
+                #print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
             
+        # widget to save the above preview
+        process_button, process_out = self.click_button_widget(desc='Pre-process texts', 
+                                                               margin='5px 0px 0px 0px')
+        
+        # function to define what happens when the save button is clicked
+        def on_process_button_clicked(_):
+            with process_out:
+                try:
+                    clear_output()
+                    # begin deduplication and pre-processing uploaded files
+                    self.process_upload(deduplication=True)
+                    
+                    # give notification when uploading is finished
+                    print('Finished uploading and pre-processing files.')
+                    print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
+                except:
+                    print('Your file upload was unsuccessful!' )
+                    print('You can only upload up to 1,000 text (.txt) files.') 
+                    print('Alternatively, you can upload an excel spreadsheet containing your texts.')
+        
+        # link the save_button with the function
+        process_button.on_click(on_process_button_clicked)
+        
         # observe when file is uploaded and display output
         self.file_uploader.observe(_cb, names='data')
-        self.upload_box = widgets.VBox([self.file_uploader, self.upload_out])
+        self.upload_box = widgets.VBox([self.file_uploader, self.upload_out, process_button, process_out])
         
         # initiate other required variables
         self.html = None
@@ -220,12 +248,28 @@ class QuotationTool():
                 text_name = temp_df.loc[n,'text_name']
                 print('{} is too large. Consider breaking it down into smaller files before uploading.'.format(text_name.title()))
                 temp_df.drop(temp_df.index[temp_df['text_name'] == text_name], inplace=True)
-            #n+=1
         
         temp_df['spacy_text'] = pd.DataFrame(texts.items()).set_index(0)
         
         return temp_df
     
+
+    def read_upload(self):    
+        '''
+        Reading uploaded .txt files
+        '''
+        # read and store the uploaded files
+        files = list(self.file_uploader.value.keys())
+        print('Reading uploaded files...')
+        
+        for file in tqdm(files):
+            if file.lower().endswith('txt'):
+                text_dic = self.load_txt(self.file_uploader.value[file])
+            else:
+                text_dic = self.load_table(self.file_uploader.value[file], \
+                    file_fmt=file.lower().split('.')[-1])
+            self.all_data.extend(text_dic)
+
 
     def process_upload(self, deduplication: bool = True):    
         '''
@@ -234,22 +278,24 @@ class QuotationTool():
         Args:
             deduplication: option to deduplicate text_df by text_id
         '''
+        '''
         # create an empty list for a placeholder to store all the texts
         all_data = []
         
         # read and store the uploaded files
         files = list(self.file_uploader.value.keys())
         #for file in self.file_uploader.value.keys():
+        print('Reading uploaded files...')
         for file in tqdm(files):
             if file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
             else:
                 text_dic = self.load_table(self.file_uploader.value[file], \
                     file_fmt=file.lower().split('.')[-1])
-            all_data.extend(text_dic)
+            all_data.extend(text_dic)'''
         
         # convert them into a pandas dataframe format, add unique id and pre-process text
-        uploaded_df = pd.DataFrame.from_dict(all_data)
+        uploaded_df = pd.DataFrame.from_dict(self.all_data)
         uploaded_df = self.hash_gen(uploaded_df)
         uploaded_df = self.nlp_preprocess(uploaded_df)
         self.text_df = pd.concat([self.text_df, uploaded_df])
@@ -487,7 +533,9 @@ class QuotationTool():
         entity_options, speaker_box, quote_box, ne_box = self.select_entity_widget(entity=True)
         
         # widgets to show the preview
-        preview_button, preview_out = self.click_button_widget(desc='Preview', margin='10px 0px 0px 10px')
+        preview_button, preview_out = self.click_button_widget(desc='Preview', 
+                                                               margin='10px 0px 0px 10px',
+                                                               width='200px')
         
         # function to define what happens when the preview button is clicked
         def on_preview_button_clicked(_):
@@ -523,7 +571,9 @@ class QuotationTool():
         preview_button.on_click(on_preview_button_clicked)
         
         # widget to save the above preview
-        save_button, save_out = self.click_button_widget(desc='Save Preview', margin='10px 0px 0px 10px')
+        save_button, save_out = self.click_button_widget(desc='Save Preview', 
+                                                         margin='10px 0px 0px 10px',
+                                                         width='200px')
         
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
@@ -580,7 +630,9 @@ class QuotationTool():
         enter_n, top_n_option = self.select_n_widget()
 
         # widget to show top entities
-        top_button, top_out = self.click_button_widget(desc='Show Top Entities', margin='10px 0px 0px 0px')
+        top_button, top_out = self.click_button_widget(desc='Show Top Entities', 
+                                                       margin='10px 0px 0px 30px',
+                                                       width='200px')
         
         # function to define what happens when the top button is clicked
         def on_top_button_clicked(_):
@@ -623,7 +675,9 @@ class QuotationTool():
         top_button.on_click(on_top_button_clicked)
         
         # widget to save the above preview
-        save_button, save_out = self.click_button_widget(desc='Save Top Entities', margin='10px 0px 0px 0px')
+        save_button, save_out = self.click_button_widget(desc='Save Top Entities', 
+                                                         margin='10px 0px 0px 30px',
+                                                         width='200px')
         
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
@@ -646,7 +700,7 @@ class QuotationTool():
         
         # displaying inputs, buttons and their outputs
         vbox1 = widgets.VBox([enter_text, text], 
-                             layout = widgets.Layout(width='300px'))
+                             layout = widgets.Layout(width='290px'))
         vbox2 = widgets.VBox([entity_options, speaker_box, quote_box], 
                              layout = widgets.Layout(width='300px', height='100px'))
         vbox3 = widgets.VBox([label_options, name_box, entity_box], 
@@ -841,7 +895,8 @@ class QuotationTool():
     def click_button_widget(
             self, 
             desc: str, 
-            margin: str='10px 0px 0px 10px'
+            margin: str='10px 0px 0px 10px',
+            width='320px'
             ):
         '''
         Create a widget to show the button to click
@@ -852,7 +907,7 @@ class QuotationTool():
         '''
         # widget to show the button to click
         button = widgets.Button(description=desc, 
-                                layout=Layout(margin=margin),
+                                layout=Layout(margin=margin, width=width),
                                 style=dict(font_style='italic',
                                            font_weight='bold'))
         
