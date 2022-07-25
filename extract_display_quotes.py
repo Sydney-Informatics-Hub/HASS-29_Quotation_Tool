@@ -24,6 +24,7 @@ import traceback
 from collections import Counter
 from datetime import datetime
 import hashlib
+from tqdm import tqdm
 
 # matplotlib: visualization tool
 from matplotlib import pyplot as plt
@@ -126,22 +127,18 @@ class QuotationTool():
                 clear_output()
                 print('Uploading files...')
                 
-                # check file size and give warning if the file size is >30k bytes
-                file_size=0
-                for item in list(self.file_uploader.value.values()):
-                    file_size +=item['metadata']['size']
-                if file_size>30000:
-                    print('This may take a while...')
-                
                 # begin deduplication and pre-processing uploaded files
                 self.process_upload(deduplication=True)
                 
                 # give notification when uploading is finished
-                print('Finished uploading files.')
+                print('Finished uploading and pre-processing files.')
                 print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
             
         # observe when file is uploaded and display output
-        self.file_uploader.observe(_cb, names='data')
+        try:
+            self.file_uploader.observe(_cb, names='data')
+        except:
+            print('upload failed')
         self.upload_box = widgets.VBox([self.file_uploader, self.upload_out])
         
         # initiate other required variables
@@ -212,14 +209,26 @@ class QuotationTool():
         Args:
             temp_df: the temporary pandas dataframe containing the text data
         '''
-        temp_df['spacy_text'] = temp_df['text']\
-            .map(sent_tokenize)\
-                .apply(lambda t: ' '.join(t))\
-                    .map(utils.preprocess_text)\
-                        .map(self.nlp)
-                        
+        print('Pre-processing files...')
+        print('This may take a while...')
+        texts = {}
+        for n,text in enumerate(tqdm(temp_df['text'])):
+            text = sent_tokenize(text)
+            text = ' '.join(text)
+            text = utils.preprocess_text(text)
+            try: 
+                text = self.nlp(text)
+                texts[n] = text
+            except:
+                text_name = temp_df.loc[n,'text_name']
+                print('{} is too large. Consider breaking it down into smaller files before uploading.'.format(text_name.title()))
+                temp_df.drop(temp_df.index[temp_df['text_name'] == text_name], inplace=True)
+            #n+=1
+        
+        temp_df['spacy_text'] = pd.DataFrame(texts.items()).set_index(0)
+        
         return temp_df
-
+    
 
     def process_upload(self, deduplication: bool = True):    
         '''
@@ -232,7 +241,9 @@ class QuotationTool():
         all_data = []
         
         # read and store the uploaded files
-        for file in self.file_uploader.value.keys():
+        files = list(self.file_uploader.value.keys())
+        #for file in self.file_uploader.value.keys():
+        for file in tqdm(files):
             if file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
             else:

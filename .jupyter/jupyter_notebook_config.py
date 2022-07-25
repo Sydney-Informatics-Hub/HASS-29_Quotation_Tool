@@ -518,7 +518,7 @@
 #  uses.
 #  Default: {}
 # c.NotebookApp.tornado_settings = {}
-c.NotebookApp.tornado_settings = {"websocket_max_message_size": 100 * 1024 * 1024}
+c.NotebookApp.tornado_settings = {"websocket_max_message_size": 120000000 * 1024 * 1024}
 
 ## Whether to trust or not X-Scheme/X-Forwarded-Proto and X-Real-Ip/X-Forwarded-
 #  For headers sent by the upstream reverse proxy. Necessary if the proxy handles
