@@ -242,15 +242,8 @@ class QuotationTool():
             all_data.extend(text_dic)
         
         # convert them into a pandas dataframe format, add unique id and pre-process text
-        #uploaded_df = pd.DataFrame.from_dict(all_data)
-        #uploaded_df = self.hash_gen(uploaded_df)
-        #self.text_df = uploaded_df
-        print('step 1 completed')
         self.text_df = pd.DataFrame.from_dict(all_data)
-        print('step 2 completed')
         self.text_df = self.hash_gen(self.text_df)
-        print('step 3 completed')
-        #self.text_df.reset_index(drop=True, inplace=True)
         
         # deduplicate the text_df by text_id
         if deduplication:
