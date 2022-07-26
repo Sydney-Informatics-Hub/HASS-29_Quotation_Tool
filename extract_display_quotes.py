@@ -103,7 +103,7 @@ class QuotationTool():
         # download spaCy's en_core_web_lg, the pre-trained English language tool from spaCy
         print('Loading spaCy language model...')
         print('This may take a while...')
-        self.nlp = spacy.load('en_core_web_lg')
+        self.nlp = spacy.load('en_core_web_sm')
         print('Finished loading.')
         
         # initiate variables to hold texts and quotes in pandas dataframes
