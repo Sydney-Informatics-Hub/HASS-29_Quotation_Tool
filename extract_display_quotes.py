@@ -245,13 +245,17 @@ class QuotationTool():
         #uploaded_df = pd.DataFrame.from_dict(all_data)
         #uploaded_df = self.hash_gen(uploaded_df)
         #self.text_df = uploaded_df
+        print('step 1 completed')
         self.text_df = pd.DataFrame.from_dict(all_data)
+        print('step 2 completed')
         self.text_df = self.hash_gen(self.text_df)
+        print('step 3 completed')
         #self.text_df.reset_index(drop=True, inplace=True)
         
         # deduplicate the text_df by text_id
         if deduplication:
             self.text_df.drop_duplicates(subset='text_id', keep='first', inplace=True)
+        print('step 4 completed')
     
     
     def extract_inc_ent(
