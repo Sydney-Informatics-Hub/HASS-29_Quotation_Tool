@@ -126,8 +126,6 @@ class QuotationTool():
             with self.upload_out:
                 # clear output and give notification that file is being uploaded
                 clear_output()
-                print('Uploading files...')
-                print('This may take a while...')
                 
                 # reading uploaded files
                 self.process_upload()
@@ -214,27 +212,11 @@ class QuotationTool():
         try: 
             text = self.nlp(text)
         except:
-            print('this text is too large. Consider breaking it down into smaller texts .')
+            print('The below text is too large. Consider breaking it down into smaller texts .')
+            print(text[:20])
             
         return text
     
-
-    def read_upload(self):    
-        '''
-        Reading uploaded .txt files
-        '''
-        # read and store the uploaded files
-        files = list(self.file_uploader.value.keys())
-        print('Reading uploaded files...')
-        
-        for file in tqdm(files):
-            if file.lower().endswith('txt'):
-                text_dic = self.load_txt(self.file_uploader.value[file])
-            else:
-                text_dic = self.load_table(self.file_uploader.value[file], \
-                    file_fmt=file.lower().split('.')[-1])
-            self.all_data.extend(text_dic)
-
 
     def process_upload(self, deduplication: bool = True):    
         '''
@@ -250,6 +232,7 @@ class QuotationTool():
         files = list(self.file_uploader.value.keys())
         
         print('Reading uploaded files...')
+        print('This may take a while...')
         for file in tqdm(files):
             if file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
@@ -261,7 +244,6 @@ class QuotationTool():
         # convert them into a pandas dataframe format, add unique id and pre-process text
         uploaded_df = pd.DataFrame.from_dict(all_data)
         uploaded_df = self.hash_gen(uploaded_df)
-        #self.text_df = pd.concat([self.text_df, uploaded_df])
         self.text_df = uploaded_df
         self.text_df.reset_index(drop=True, inplace=True)
         
@@ -312,8 +294,6 @@ class QuotationTool():
             text_id = row.text_id
             text_name = row.text_name
             doc = self.nlp_preprocess(row.text)
-            #print('doc:',type(doc))
-            #print('doc:',doc)
             
             try:        
                 # extract the quotes
@@ -443,7 +423,6 @@ class QuotationTool():
         # get the spaCy text 
         current_text = self.text_df[self.text_df['text_name']==text_name]['text'].to_list()[0]
         doc = self.nlp_preprocess(current_text)
-        #print('doc:',doc)
         
         # create a mapping dataframe between the character index and token index from the spacy text.
         loc2tok_df = pd.DataFrame([(t.idx, t.i) for t in doc], columns = ['loc', 'token'])
