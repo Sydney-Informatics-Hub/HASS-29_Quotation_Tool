@@ -109,6 +109,7 @@ class QuotationTool():
         # initiate variables to hold texts and quotes in pandas dataframes
         self.text_df = None
         self.quotes_df = None
+        self.all_data = []
         
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
@@ -121,24 +122,49 @@ class QuotationTool():
     
         self.upload_out = widgets.Output()
         
+        with self.upload_out:
+            print('\nClick the below button to pre-process texts:')
+            
         # give notification when file is uploaded
         def _cb(change):
             with self.upload_out:
                 # clear output and give notification that file is being uploaded
                 clear_output()
                 print('Uploading files...')
-                print('This may take a while...')
                 
                 # reading uploaded files
-                self.process_upload()
+                self.read_upload()
                 
                 # give notification when uploading is finished
-                print('Finished uploading files.')
-                print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
+                #print('Finished uploading and pre-processing files.')
+                #print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
             
+        # widget to save the above preview
+        process_button, process_out = self.click_button_widget(desc='Pre-process files', 
+                                                               margin='5px 0px 0px 0px')
+        
+        # function to define what happens when the save button is clicked
+        def on_process_button_clicked(_):
+            with process_out:
+                try:
+                    clear_output()
+                    # begin deduplication and pre-processing uploaded files
+                    self.process_upload(deduplication=True)
+                    
+                    # give notification when uploading is finished
+                    print('Finished uploading and pre-processing files.')
+                    print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
+                except:
+                    print('Your file upload was unsuccessful!' )
+                    print('You can only upload up to 1,000 text (.txt) files.') 
+                    print('Alternatively, you can upload an excel spreadsheet containing your texts.')
+        
+        # link the save_button with the function
+        process_button.on_click(on_process_button_clicked)
+        
         # observe when file is uploaded and display output
         self.file_uploader.observe(_cb, names='data')
-        self.upload_box = widgets.VBox([self.file_uploader, self.upload_out])
+        self.upload_box = widgets.VBox([self.file_uploader, self.upload_out, process_button, process_out])
         
         # initiate other required variables
         self.html = None
@@ -201,22 +227,31 @@ class QuotationTool():
         return temp_df
 
 
-    def nlp_preprocess(self, text):
+    def nlp_preprocess(self, temp_df: pd.DataFrame) -> pd.DataFrame:
         '''
         Pre-process text and fit it with Spacy language model into the column "spacy_text"
 
         Args:
             temp_df: the temporary pandas dataframe containing the text data
         '''
-        text = sent_tokenize(text)
-        text = ' '.join(text)
-        text = utils.preprocess_text(text)
-        try: 
-            text = self.nlp(text)
-        except:
-            print('this text is too large. Consider breaking it down into smaller texts .')
-            
-        return text
+        print('Pre-processing files...')
+        print('This may take a while...')
+        texts = {}
+        for n,text in enumerate(tqdm(temp_df['text'])):
+            text = sent_tokenize(text)
+            text = ' '.join(text)
+            text = utils.preprocess_text(text)
+            try: 
+                text = self.nlp(text)
+                texts[n] = text
+            except:
+                text_name = temp_df.loc[n,'text_name']
+                print('{} is too large. Consider breaking it down into smaller files before uploading.'.format(text_name.title()))
+                temp_df.drop(temp_df.index[temp_df['text_name'] == text_name], inplace=True)
+        
+        temp_df['spacy_text'] = pd.DataFrame(texts.items()).set_index(0)
+        
+        return temp_df
     
 
     def read_upload(self):    
@@ -243,12 +278,13 @@ class QuotationTool():
         Args:
             deduplication: option to deduplicate text_df by text_id
         '''
+        '''
         # create an empty list for a placeholder to store all the texts
         all_data = []
         
         # read and store the uploaded files
         files = list(self.file_uploader.value.keys())
-        
+        #for file in self.file_uploader.value.keys():
         print('Reading uploaded files...')
         for file in tqdm(files):
             if file.lower().endswith('txt'):
@@ -256,11 +292,12 @@ class QuotationTool():
             else:
                 text_dic = self.load_table(self.file_uploader.value[file], \
                     file_fmt=file.lower().split('.')[-1])
-            all_data.extend(text_dic)
+            all_data.extend(text_dic)'''
         
         # convert them into a pandas dataframe format, add unique id and pre-process text
-        uploaded_df = pd.DataFrame.from_dict(all_data)
+        uploaded_df = pd.DataFrame.from_dict(self.all_data)
         uploaded_df = self.hash_gen(uploaded_df)
+        uploaded_df = self.nlp_preprocess(uploaded_df)
         self.text_df = pd.concat([self.text_df, uploaded_df])
         self.text_df.reset_index(drop=True, inplace=True)
         
@@ -308,9 +345,7 @@ class QuotationTool():
         for row in self.text_df.itertuples():
             text_id = row.text_id
             text_name = row.text_name
-            doc = self.nlp_preprocess(row.text)
-            #print('doc:',type(doc))
-            #print('doc:',doc)
+            doc = row.spacy_text
             
             try:        
                 # extract the quotes
@@ -337,7 +372,6 @@ class QuotationTool():
                 # this will provide some information in the case of an error
                 self.app_logger.exception("message")
                 traceback.print_exception()
-            
                 
         # convert the outcome into a pandas dataframe
         self.quotes_df = pd.DataFrame.from_dict(all_quotes)
@@ -438,9 +472,9 @@ class QuotationTool():
                    'top_offset_step':14}
         
         # get the spaCy text 
-        current_text = self.text_df[self.text_df['text_name']==text_name]['text'].to_list()[0]
-        doc = self.nlp_preprocess(current_text)
+        doc = self.text_df[self.text_df['text_name']==text_name]['spacy_text'].to_list()[0]
         print('doc:',doc)
+        print('my-doc:',self.text_df[self.text_df['text_name']==text_name]['text'].to_list()[0])
         
         # create a mapping dataframe between the character index and token index from the spacy text.
         loc2tok_df = pd.DataFrame([(t.idx, t.i) for t in doc], columns = ['loc', 'token'])
