@@ -156,7 +156,7 @@ class QuotationTool():
             value: the file containing the text data
         '''
         temp = {'text_name': value['metadata']['name'][:-4],
-                'text': codecs.decode(value['content'], encoding='utf-8', errors='ignore')
+                'text': codecs.decode(value['content'], encoding='utf-8', errors='replace')
         }
     
         return [temp]
