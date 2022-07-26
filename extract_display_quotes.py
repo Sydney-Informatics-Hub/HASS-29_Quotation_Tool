@@ -302,11 +302,13 @@ class QuotationTool():
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
         '''
+        print('Extracting quotes...')
+        print('This may take a while...')
         # create an empty list to store all detected quotes
         all_quotes = []
         
         # go through all the texts and start extracting quotes
-        for row in self.text_df.itertuples():
+        for row in tqdm(self.text_df.itertuples(), total=len(self.text_df)):
             text_id = row.text_id
             text_name = row.text_name
             doc = self.nlp_preprocess(row.text)

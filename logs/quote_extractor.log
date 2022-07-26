@@ -1,0 +1,36 @@
+2022-07-26 12:49:12,124 - quote_extractor - ERROR - message
+Traceback (most recent call last):
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/extract_display_quotes.py", line 318, in get_quotes
+    quotes = extract_quotes(doc_id=text_id, doc=doc,
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 172, in extract_quotes
+    syntactic_quotes = extract_syntactic_quotes(doc_id, doc, write_tree)
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 187, in extract_syntactic_quotes
+    if word.dep_ in ('ccomp'):
+AttributeError: 'str' object has no attribute 'dep_'
+2022-07-26 12:49:12,124 - quote_extractor - ERROR - message
+Traceback (most recent call last):
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/extract_display_quotes.py", line 318, in get_quotes
+    quotes = extract_quotes(doc_id=text_id, doc=doc,
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 172, in extract_quotes
+    syntactic_quotes = extract_syntactic_quotes(doc_id, doc, write_tree)
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 187, in extract_syntactic_quotes
+    if word.dep_ in ('ccomp'):
+AttributeError: 'str' object has no attribute 'dep_'
+2022-07-26 12:50:43,207 - quote_extractor - ERROR - message
+Traceback (most recent call last):
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/extract_display_quotes.py", line 318, in get_quotes
+    quotes = extract_quotes(doc_id=text_id, doc=doc,
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 172, in extract_quotes
+    syntactic_quotes = extract_syntactic_quotes(doc_id, doc, write_tree)
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 187, in extract_syntactic_quotes
+    if word.dep_ in ('ccomp'):
+AttributeError: 'str' object has no attribute 'dep_'
+2022-07-26 12:50:43,207 - quote_extractor - ERROR - message
+Traceback (most recent call last):
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/extract_display_quotes.py", line 318, in get_quotes
+    quotes = extract_quotes(doc_id=text_id, doc=doc,
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 172, in extract_quotes
+    syntactic_quotes = extract_syntactic_quotes(doc_id, doc, write_tree)
+  File "/Users/sjuf9909/Documents/GitHub/HASS-29_Quotation_Tool-public/Untitled/./GenderGapTracker/NLP/main/quote_extractor.py", line 187, in extract_syntactic_quotes
+    if word.dep_ in ('ccomp'):
+AttributeError: 'str' object has no attribute 'dep_'
