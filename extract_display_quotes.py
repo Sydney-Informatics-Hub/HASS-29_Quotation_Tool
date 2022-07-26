@@ -24,6 +24,7 @@ import traceback
 from collections import Counter
 from datetime import datetime
 import hashlib
+from tqdm import tqdm
 
 # matplotlib: visualization tool
 from matplotlib import pyplot as plt
@@ -114,9 +115,10 @@ class QuotationTool():
             description='Upload your files (txt, csv or xlsx)',
             accept='.txt, .xlsx, .csv ', # accepted file extension 
             multiple=True,  # True to accept multiple files
+            error='File upload unsuccessful. Please try again!',
             layout = widgets.Layout(width='320px')
             )
-        
+    
         self.upload_out = widgets.Output()
         
         # give notification when file is uploaded
@@ -124,17 +126,9 @@ class QuotationTool():
             with self.upload_out:
                 # clear output and give notification that file is being uploaded
                 clear_output()
-                print('Uploading files...')
                 
-                # check file size and give warning if the file size is >30k bytes
-                file_size=0
-                for item in list(self.file_uploader.value.values()):
-                    file_size +=item['metadata']['size']
-                if file_size>30000:
-                    print('This may take a while...')
-                
-                # begin deduplication and pre-processing uploaded files
-                self.process_upload(deduplication=True)
+                # reading uploaded files
+                self.process_upload()
                 
                 # give notification when uploading is finished
                 print('Finished uploading files.')
@@ -162,9 +156,9 @@ class QuotationTool():
             value: the file containing the text data
         '''
         temp = {'text_name': value['metadata']['name'][:-4],
-                'text': codecs.decode(value['content'], encoding='utf-8')
+                'text': codecs.decode(value['content'], encoding='utf-8', errors='replace')
         }
-        
+    
         return [temp]
 
 
@@ -205,21 +199,24 @@ class QuotationTool():
         return temp_df
 
 
-    def nlp_preprocess(self, temp_df: pd.DataFrame) -> pd.DataFrame:
+    def nlp_preprocess(self, text):
         '''
         Pre-process text and fit it with Spacy language model into the column "spacy_text"
 
         Args:
             temp_df: the temporary pandas dataframe containing the text data
         '''
-        temp_df['spacy_text'] = temp_df['text']\
-            .map(sent_tokenize)\
-                .apply(lambda t: ' '.join(t))\
-                    .map(utils.preprocess_text)\
-                        .map(self.nlp)
-                        
-        return temp_df
-
+        text = sent_tokenize(text)
+        text = ' '.join(text)
+        text = utils.preprocess_text(text)
+        try: 
+            text = self.nlp(text)
+        except:
+            print('The below text is too large. Consider breaking it down into smaller texts .')
+            print(text[:20])
+            
+        return text
+    
 
     def process_upload(self, deduplication: bool = True):    
         '''
@@ -232,7 +229,11 @@ class QuotationTool():
         all_data = []
         
         # read and store the uploaded files
-        for file in self.file_uploader.value.keys():
+        files = list(self.file_uploader.value.keys())
+        
+        print('Reading uploaded files...')
+        print('This may take a while...')
+        for file in tqdm(files):
             if file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
             else:
@@ -241,15 +242,13 @@ class QuotationTool():
             all_data.extend(text_dic)
         
         # convert them into a pandas dataframe format, add unique id and pre-process text
-        uploaded_df = pd.DataFrame.from_dict(all_data)
-        uploaded_df = self.hash_gen(uploaded_df)
-        uploaded_df = self.nlp_preprocess(uploaded_df)
-        self.text_df = pd.concat([self.text_df, uploaded_df])
-        self.text_df.reset_index(drop=True, inplace=True)
+        self.text_df = pd.DataFrame.from_dict(all_data)
+        self.text_df = self.hash_gen(self.text_df)
         
         # deduplicate the text_df by text_id
         if deduplication:
             self.text_df.drop_duplicates(subset='text_id', keep='first', inplace=True)
+        print('step 4 completed')
     
     
     def extract_inc_ent(
@@ -284,14 +283,16 @@ class QuotationTool():
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
         '''
+        print('Extracting quotes...')
+        print('This may take a while...')
         # create an empty list to store all detected quotes
         all_quotes = []
         
         # go through all the texts and start extracting quotes
-        for row in self.text_df.itertuples():
+        for row in tqdm(self.text_df.itertuples(), total=len(self.text_df)):
             text_id = row.text_id
             text_name = row.text_name
-            doc = row.spacy_text
+            doc = self.nlp_preprocess(row.text)
             
             try:        
                 # extract the quotes
@@ -318,6 +319,7 @@ class QuotationTool():
                 # this will provide some information in the case of an error
                 self.app_logger.exception("message")
                 traceback.print_exception()
+            
                 
         # convert the outcome into a pandas dataframe
         self.quotes_df = pd.DataFrame.from_dict(all_quotes)
@@ -418,7 +420,8 @@ class QuotationTool():
                    'top_offset_step':14}
         
         # get the spaCy text 
-        doc = self.text_df[self.text_df['text_name']==text_name]['spacy_text'].to_list()[0]
+        current_text = self.text_df[self.text_df['text_name']==text_name]['text'].to_list()[0]
+        doc = self.nlp_preprocess(current_text)
         
         # create a mapping dataframe between the character index and token index from the spacy text.
         loc2tok_df = pd.DataFrame([(t.idx, t.i) for t in doc], columns = ['loc', 'token'])
@@ -479,7 +482,9 @@ class QuotationTool():
         entity_options, speaker_box, quote_box, ne_box = self.select_entity_widget(entity=True)
         
         # widgets to show the preview
-        preview_button, preview_out = self.click_button_widget(desc='Preview', margin='10px 0px 0px 10px')
+        preview_button, preview_out = self.click_button_widget(desc='Preview', 
+                                                               margin='10px 0px 0px 10px',
+                                                               width='200px')
         
         # function to define what happens when the preview button is clicked
         def on_preview_button_clicked(_):
@@ -515,7 +520,9 @@ class QuotationTool():
         preview_button.on_click(on_preview_button_clicked)
         
         # widget to save the above preview
-        save_button, save_out = self.click_button_widget(desc='Save Preview', margin='10px 0px 0px 10px')
+        save_button, save_out = self.click_button_widget(desc='Save Preview', 
+                                                         margin='10px 0px 0px 10px',
+                                                         width='200px')
         
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
@@ -572,7 +579,9 @@ class QuotationTool():
         enter_n, top_n_option = self.select_n_widget()
 
         # widget to show top entities
-        top_button, top_out = self.click_button_widget(desc='Show Top Entities', margin='10px 0px 0px 0px')
+        top_button, top_out = self.click_button_widget(desc='Show Top Entities', 
+                                                       margin='10px 0px 0px 30px',
+                                                       width='200px')
         
         # function to define what happens when the top button is clicked
         def on_top_button_clicked(_):
@@ -615,7 +624,9 @@ class QuotationTool():
         top_button.on_click(on_top_button_clicked)
         
         # widget to save the above preview
-        save_button, save_out = self.click_button_widget(desc='Save Top Entities', margin='10px 0px 0px 0px')
+        save_button, save_out = self.click_button_widget(desc='Save Top Entities', 
+                                                         margin='10px 0px 0px 30px',
+                                                         width='200px')
         
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
@@ -638,7 +649,7 @@ class QuotationTool():
         
         # displaying inputs, buttons and their outputs
         vbox1 = widgets.VBox([enter_text, text], 
-                             layout = widgets.Layout(width='300px'))
+                             layout = widgets.Layout(width='290px'))
         vbox2 = widgets.VBox([entity_options, speaker_box, quote_box], 
                              layout = widgets.Layout(width='300px', height='100px'))
         vbox3 = widgets.VBox([label_options, name_box, entity_box], 
@@ -833,7 +844,8 @@ class QuotationTool():
     def click_button_widget(
             self, 
             desc: str, 
-            margin: str='10px 0px 0px 10px'
+            margin: str='10px 0px 0px 10px',
+            width='320px'
             ):
         '''
         Create a widget to show the button to click
@@ -844,7 +856,7 @@ class QuotationTool():
         '''
         # widget to show the button to click
         button = widgets.Button(description=desc, 
-                                layout=Layout(margin=margin),
+                                layout=Layout(margin=margin, width=width),
                                 style=dict(font_style='italic',
                                            font_weight='bold'))
         
