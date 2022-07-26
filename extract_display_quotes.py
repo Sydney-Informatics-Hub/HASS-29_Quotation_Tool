@@ -261,7 +261,8 @@ class QuotationTool():
         # convert them into a pandas dataframe format, add unique id and pre-process text
         uploaded_df = pd.DataFrame.from_dict(all_data)
         uploaded_df = self.hash_gen(uploaded_df)
-        self.text_df = pd.concat([self.text_df, uploaded_df])
+        #self.text_df = pd.concat([self.text_df, uploaded_df])
+        self.text_df = uploaded_df
         self.text_df.reset_index(drop=True, inplace=True)
         
         # deduplicate the text_df by text_id
@@ -440,7 +441,7 @@ class QuotationTool():
         # get the spaCy text 
         current_text = self.text_df[self.text_df['text_name']==text_name]['text'].to_list()[0]
         doc = self.nlp_preprocess(current_text)
-        print('doc:',doc)
+        #print('doc:',doc)
         
         # create a mapping dataframe between the character index and token index from the spacy text.
         loc2tok_df = pd.DataFrame([(t.idx, t.i) for t in doc], columns = ['loc', 'token'])
