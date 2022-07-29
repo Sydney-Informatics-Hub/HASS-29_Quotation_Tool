@@ -25,6 +25,7 @@ from collections import Counter
 from datetime import datetime
 import hashlib
 from tqdm import tqdm
+from zipfile import ZipFile
 
 # matplotlib: visualization tool
 from matplotlib import pyplot as plt
@@ -113,7 +114,7 @@ class QuotationTool():
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
             description='Upload your files (txt, csv or xlsx)',
-            accept='.txt, .xlsx, .csv ', # accepted file extension 
+            accept='.txt, .xlsx, .csv, .zip', # accepted file extension 
             multiple=True,  # True to accept multiple files
             error='File upload unsuccessful. Please try again!',
             layout = widgets.Layout(width='320px')
@@ -126,6 +127,9 @@ class QuotationTool():
             with self.upload_out:
                 # clear output and give notification that file is being uploaded
                 clear_output()
+                
+                # check file size
+                self.check_file_size(self.file_uploader)
                 
                 # reading uploaded files
                 self.process_upload()
@@ -147,6 +151,13 @@ class QuotationTool():
         os.makedirs('output', exist_ok=True)
 
 
+    def check_file_size(self, file):
+        all_file_size=0
+        for key, value in file.value.items():
+            all_file_size += value['metadata']['size']
+        print('The total size of the upload is {:.2f} MB.\n'.format(all_file_size/1000000))
+    
+
     def load_txt(self, value: dict) -> list:
         '''
         Load individual txt file content and return a dictionary object, 
@@ -158,6 +169,9 @@ class QuotationTool():
         temp = {'text_name': value['metadata']['name'][:-4],
                 'text': codecs.decode(value['content'], encoding='utf-8', errors='replace')
         }
+        
+        unknown_count = temp['text'].count('�')
+        print('We identified {} unknown character(s) in your text.'.format(unknown_count))
     
         return [temp]
 
@@ -186,6 +200,47 @@ class QuotationTool():
         
         return temp
 
+
+    def load_zip(self, text_name, file_dir):
+        '''
+        Load zip file
+        
+        Args:
+            value: the file containing the text data
+        '''
+        # create an input folder if not already exist
+        os.makedirs('input', exist_ok=True)
+        
+        # read the file based on the file format
+        temp = io.BytesIO(text_name['content'])
+        
+        # opening the zip file in READ mode
+        with ZipFile(temp, 'r') as zip:
+            # extract files
+            print('Extracting files...')
+            zip.extractall('./input')
+        
+        # get file_names of unzipped texts
+        file_names = [file for file in os.listdir('./input/'+file_dir[:-4]+'/') if file.endswith('txt')]
+        
+        return file_names
+    
+    
+    def read_unzip_txt(self, zip_file, file_dir):
+        '''
+        read unzip text files
+        '''
+        print('Reading extracted files...')
+        unzip_texts = []
+        for file in tqdm(zip_file, total=len(zip_file)):
+            with open('./input/'+file_dir[:-4]+'/'+file) as f:
+                temp = {'text_name': file,
+                        'text': f.read()
+                }
+            unzip_texts.extend([temp])
+        
+        return unzip_texts
+    
 
     def hash_gen(self, temp_df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -234,7 +289,10 @@ class QuotationTool():
         print('Reading uploaded files...')
         print('This may take a while...')
         for file in tqdm(files):
-            if file.lower().endswith('txt'):
+            if file.lower().endswith('zip'):
+                file_names = self.load_zip(self.file_uploader.value[file], file)
+                text_dic = self.read_unzip_txt(file_names, file)
+            elif file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
             else:
                 text_dic = self.load_table(self.file_uploader.value[file], \
