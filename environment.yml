@@ -15,6 +15,7 @@ dependencies:
   - matplotlib
   - spacy=3.3.1
   - spacy-model-en_core_web_trf
+  - spacy-transformers
   - nltk=3.7
   - ipywidgets=7.6.5
   - pip
