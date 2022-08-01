@@ -713,6 +713,7 @@ class QuotationTool():
         
         # function to define what happens when the save button is clicked
         def on_save_button_clicked(_):
+            warnings.filterwarnings("ignore")
             with save_out:
                 if self.figs!=[]:
                     # set the output folder for saving
@@ -726,6 +727,7 @@ class QuotationTool():
                         display(DownloadFileLink(out_dir+file_name, file_name))
                 else:
                     print('You need to generate the bar charts before you can save them!')
+                warnings.filterwarnings("default")
         
         # link the save_button with the function
         save_button.on_click(on_save_button_clicked)
