@@ -14,8 +14,7 @@ dependencies:
   - openpyxl
   - matplotlib
   - spacy=3.3.1
-  - spacy-model-en_core_web_trf
-  - spacy-transformers=1.1.5
+  - spacy-model-en_core_web_md
   - nltk=3.7
   - ipywidgets=7.6.5
   - pip

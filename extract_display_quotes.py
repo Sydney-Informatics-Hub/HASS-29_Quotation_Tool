@@ -104,7 +104,7 @@ class QuotationTool():
         # download spaCy's en_core_web_lg, the pre-trained English language tool from spaCy
         print('Loading spaCy language model...')
         print('This may take a while...')
-        self.nlp = spacy.load('en_core_web_trf')
+        self.nlp = spacy.load('en_core_web_md')
         print('Finished loading.')
         
         # initiate variables to hold texts and quotes in pandas dataframes
@@ -171,7 +171,7 @@ class QuotationTool():
         }
         
         unknown_count = temp['text'].count('�')
-        print('We identified {} unknown character(s) in your text.'.format(unknown_count))
+        print('We identified {} unknown character(s) in the following text: {}.'.format(unknown_count, value['metadata']['name'][:-4]))
     
         return [temp]
 
@@ -220,10 +220,16 @@ class QuotationTool():
             print('Extracting files...')
             zip.extractall('./input')
         
-        # get file_names of unzipped texts
-        file_names = [file for file in os.listdir('./input/'+file_dir[:-4]+'/') if file.endswith('txt')]
+        # get the file directory
+        file_dir = ['./input/' if len([file for file in os.listdir('./input/') \
+                                       if file.endswith('.txt')])>0 \
+                    else './input/'+[file for file in os.listdir('./input/') \
+                                     if not file.endswith('MACOSX')][0]+'/'][0]
         
-        return file_names
+        # get file_names of unzipped texts
+        file_names = [file for file in os.listdir(file_dir) if file.endswith('txt')]
+        
+        return file_names, file_dir
     
     
     def read_unzip_txt(self, zip_file, file_dir):
@@ -232,12 +238,15 @@ class QuotationTool():
         '''
         print('Reading extracted files...')
         unzip_texts = []
-        for file in tqdm(zip_file, total=len(zip_file)):
-            with open('./input/'+file_dir[:-4]+'/'+file) as f:
-                temp = {'text_name': file,
-                        'text': f.read()
-                }
-            unzip_texts.extend([temp])
+        try:
+            for file in tqdm(zip_file, total=len(zip_file)):
+                with open(file_dir+file) as f:
+                    temp = {'text_name': file,
+                            'text': f.read()
+                    }
+                unzip_texts.extend([temp])
+        except:
+            print('We are having problem uploading your zip file. Please refer to user guide for further detail.')
         
         return unzip_texts
     
@@ -290,8 +299,8 @@ class QuotationTool():
         print('This may take a while...')
         for file in tqdm(files):
             if file.lower().endswith('zip'):
-                file_names = self.load_zip(self.file_uploader.value[file], file)
-                text_dic = self.read_unzip_txt(file_names, file)
+                file_names, file_dir = self.load_zip(self.file_uploader.value[file], file)
+                text_dic = self.read_unzip_txt(file_names, file_dir)
             elif file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
             else:
@@ -306,7 +315,6 @@ class QuotationTool():
         # deduplicate the text_df by text_id
         if deduplication:
             self.text_df.drop_duplicates(subset='text_id', keep='first', inplace=True)
-        print('step 4 completed')
     
     
     def extract_inc_ent(
