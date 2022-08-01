@@ -15,9 +15,7 @@ dependencies:
   - matplotlib
   - spacy=3.3.1
   - spacy-model-en_core_web_trf
-  - spacy-transformers
+  - spacy-transformers=1.1.5
   - nltk=3.7
   - ipywidgets=7.6.5
-  - pip
-  - pip:
-      - pymongo==4.1.1
+  - pymongo=3.1.12
