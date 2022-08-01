@@ -85,7 +85,7 @@ class DownloadFileLink(FileLink):
             ]
         )
         
-
+        
 class QuotationTool():
     '''
     Interactive tool for extracting and displaying quotes in a text
@@ -211,7 +211,7 @@ class QuotationTool():
         return temp
 
 
-    def load_zip(self, text_name, file_dir):
+    def load_zip(self, text_name, file_dir: str):
         '''
         Load zip file
         
@@ -242,7 +242,7 @@ class QuotationTool():
         return file_names, file_dir
     
     
-    def read_unzip_txt(self, zip_file, file_dir):
+    def read_unzip_txt(self, zip_file: list, file_dir: str) -> list:
         '''
         read unzip text files
         '''
