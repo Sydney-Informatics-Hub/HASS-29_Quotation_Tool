@@ -21,8 +21,8 @@ import sys
 import codecs
 import logging
 import traceback
+import warnings
 from collections import Counter
-from datetime import datetime
 import hashlib
 from tqdm import tqdm
 from zipfile import ZipFile
@@ -39,13 +39,12 @@ from spacy import displacy
 from spacy.tokens import Span
 import nltk
 nltk.download('punkt')
-from nltk import Tree
 from nltk.tokenize import sent_tokenize
 
 # ipywidgets: tools for interactive browser controls in Jupyter notebooks
 import ipywidgets as widgets
 from ipywidgets import Layout
-from IPython.display import display, Markdown, clear_output, FileLink
+from IPython.display import display, clear_output, FileLink
 
 # clone the GenderGapTracker GitHub page
 path  = './'
@@ -104,7 +103,7 @@ class QuotationTool():
         # download spaCy's en_core_web_lg, the pre-trained English language tool from spaCy
         print('Loading spaCy language model...')
         print('This may take a while...')
-        self.nlp = spacy.load('en_core_web_md')
+        self.nlp = spacy.load('en_core_web_lg')
         print('Finished loading.')
         
         # initiate variables to hold texts and quotes in pandas dataframes
@@ -135,7 +134,7 @@ class QuotationTool():
                 self.process_upload()
                 
                 # give notification when uploading is finished
-                print('Finished uploading files.')
+                print('\nFinished uploading files.')
                 print('Currently {} text documents are loaded for analysis'.format(self.text_df.shape[0]))
             
         # observe when file is uploaded and display output
@@ -153,9 +152,19 @@ class QuotationTool():
 
     def check_file_size(self, file):
         all_file_size=0
+        large_files = []
         for key, value in file.value.items():
+            if value['metadata']['size']>1000000 and value['metadata']['name'].endswith('.txt'):
+                large_files.append(value['metadata']['name'])
             all_file_size += value['metadata']['size']
-        print('The total size of the upload is {:.2f} MB.\n'.format(all_file_size/1000000))
+        
+        # display warning for large files
+        print('The total size of the upload is {:.2f} MB.'.format(all_file_size/1000000))
+        if len(large_files)>0:
+            print('The following file(s) are larger than 1MB:')
+            for name in large_files:
+                print(name)
+            print()
     
 
     def load_txt(self, value: dict) -> list:
@@ -171,8 +180,9 @@ class QuotationTool():
         }
         
         unknown_count = temp['text'].count('�')
-        print('We identified {} unknown character(s) in the following text: {}.'.format(unknown_count, value['metadata']['name'][:-4]))
-    
+        if unknown_count>0:
+            print('We identified {} unknown character(s) in the following text: {}.'.format(unknown_count, value['metadata']['name'][:-4]))
+        
         return [temp]
 
 
@@ -245,6 +255,7 @@ class QuotationTool():
                             'text': f.read()
                     }
                 unzip_texts.extend([temp])
+                os.remove(file_dir+file)
         except:
             print('We are having problem uploading your zip file. Please refer to user guide for further detail.')
         
@@ -332,7 +343,6 @@ class QuotationTool():
             inc_ent: a list containing the named entities to be extracted from the text, 
                      e.g., ['ORG','PERSON','GPE','NORP','FAC','LOC']
         '''
-        
         return [
             [(str(ent), ent.label_) for ent in spacy_doc.ents \
                 if (str(ent) in string) & (ent.label_ in inc_ent)]\
@@ -521,18 +531,24 @@ class QuotationTool():
                         start_token, end_token = selTokens[0], selTokens[-1] 
                         span_code = "Span(doc, {}, {}, '{}'),".format(start_token, end_token+1, key) 
                         my_code_list.insert(1,span_code)
-                    
+        
         # combine all codes
         my_code = ''.join(my_code_list)
     
         # execute the code
         exec(my_code)
         
+        
         # display the preview in this notebook
+        if len(locs['QUOTE'])==0 and len(locs['SPEAKER'])==0:
+            print('No speakers or quotes identified in the text. Select another text.')
+        
+        warnings.filterwarnings("ignore")
         displacy.render(doc, style='span', options=options, jupyter=True)
         self.html = displacy.render(doc, style='span', options=options, jupyter=False, page=True)
+        warnings.filterwarnings("default")
         
-    
+        
     def analyse_quotes(self, inc_ent: list):
         '''
         Interactive tool to display and analyse speakers, quotes and named entities inside the text
@@ -575,6 +591,7 @@ class QuotationTool():
                 if show_what==[]:
                     print('Please select the entities to display!')
                 else:
+                    #self.show_quotes(text_name, show_what, inc_ent)
                     try:
                         # display the text and the selected entities
                         self.show_quotes(text_name, show_what, inc_ent)
@@ -923,8 +940,7 @@ class QuotationTool():
         # widget to show the button to click
         button = widgets.Button(description=desc, 
                                 layout=Layout(margin=margin, width=width),
-                                style=dict(font_style='italic',
-                                           font_weight='bold'))
+                                style=dict(font_weight='bold'))
         
         # the output after clicking the button
         out = widgets.Output()

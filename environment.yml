@@ -7,16 +7,17 @@ channels:
   
 dependencies:
   # Try to install everything via conda where possible,
-  #   makes for simpler and quicker installs
+  # makes for simpler and quicker installs
   - python=3.8.13
   - numpy
   - pandas
   - openpyxl
   - matplotlib
   - spacy=3.3.1
-  - spacy-model-en_core_web_md
+  - spacy-model-en_core_web_lg
   - nltk=3.7
   - ipywidgets=7.6.5
   - pip
   - pip:
       - pymongo==4.1.1
+      - pyexcelerate
