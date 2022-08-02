@@ -828,7 +828,6 @@ class QuotationTool():
                          'label': 'entity types'}
             
             # specify the width, height and tick range for the plot
-            display_width = top_n/1.5
             display_height = top_n/2
             range_tick = max(1,round(max(top_ent.values())/5))
             
