@@ -109,6 +109,7 @@ class QuotationTool():
         # initiate variables to hold texts and quotes in pandas dataframes
         self.text_df = None
         self.quotes_df = None
+        self.large_texts = []
         
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
@@ -151,20 +152,22 @@ class QuotationTool():
 
 
     def check_file_size(self, file):
-        all_file_size=0
-        large_files = []
-        for key, value in file.value.items():
-            if value['metadata']['size']>1000000 and value['metadata']['name'].endswith('.txt'):
-                large_files.append(value['metadata']['name'])
-            all_file_size += value['metadata']['size']
+        '''
+        Function to check the uploaded file size
         
-        # display warning for large files
-        print('The total size of the upload is {:.2f} MB.'.format(all_file_size/1000000))
-        if len(large_files)>0:
-            print('The following file(s) are larger than 1MB:')
-            for name in large_files:
-                print(name)
-            print()
+        Args:
+            file: the uploaded file containing the text data
+        '''
+        # check total uploaded file size
+        total_file_size = sum([i['metadata']['size'] for i in self.file_uploader.value.values()])
+        print('The total size of the upload is {:.2f} MB.'.format(total_file_size/1000000))
+        
+        # display warning for individual large files (>1MB)
+        large_text = [text['metadata']['name'] for text in self.file_uploader.value.values() \
+                      if text['metadata']['size']>1000000 and \
+                          text['metadata']['name'].endswith('.txt')]
+        if len(large_text)>0:
+            print('The following file(s) are larger than 1MB:', large_text)
     
 
     def load_txt(self, value: dict) -> list:
@@ -216,15 +219,16 @@ class QuotationTool():
         Load zip file
         
         Args:
-            value: the file containing the text data
+            text_name: the file containing the zipped text data
+            file_dir: the directory of the zipped file
         '''
         # create an input folder if not already exist
         os.makedirs('input', exist_ok=True)
         
-        # read the file based on the file format
+        # read and decode the zip file
         temp = io.BytesIO(text_name['content'])
         
-        # opening the zip file in READ mode
+        # open and extract the zip file
         with ZipFile(temp, 'r') as zip:
             # extract files
             print('Extracting files...')
@@ -242,21 +246,30 @@ class QuotationTool():
         return file_names, file_dir
     
     
-    def read_unzip_txt(self, zip_file: list, file_dir: str) -> list:
+    def read_unzip_txt(self, file_names: list, file_dir: str) -> list:
         '''
-        read unzip text files
+        Read the unzip text files
+        
+        Args:
+            file_names the name of the text files
+            file_dir: the directory of the zipped file
         '''
         print('Reading extracted files...')
         unzip_texts = []
         try:
-            for file in tqdm(zip_file, total=len(zip_file)):
+            # read the unzip text file
+            for file in tqdm(file_names, total=len(file_names)):
                 with open(file_dir+file) as f:
                     temp = {'text_name': file,
                             'text': f.read()
                     }
+                # store in unzip_texts
                 unzip_texts.extend([temp])
+                
+                # remove file from the directory
                 os.remove(file_dir+file)
         except:
+            # display warning if there are any issues
             print('We are having problem uploading your zip file. Please refer to user guide for further detail.')
         
         return unzip_texts
@@ -284,11 +297,7 @@ class QuotationTool():
         text = sent_tokenize(text)
         text = ' '.join(text)
         text = utils.preprocess_text(text)
-        try: 
-            text = self.nlp(text)
-        except:
-            print('The below text is too large. Consider breaking it down into smaller texts .')
-            print(text[:20])
+        text = self.nlp(text)
             
         return text
     
@@ -306,7 +315,7 @@ class QuotationTool():
         # read and store the uploaded files
         files = list(self.file_uploader.value.keys())
         
-        print('Reading uploaded files...')
+        print('\nReading uploaded files...')
         print('This may take a while...')
         for file in tqdm(files):
             if file.lower().endswith('zip'):
@@ -368,9 +377,10 @@ class QuotationTool():
         for row in tqdm(self.text_df.itertuples(), total=len(self.text_df)):
             text_id = row.text_id
             text_name = row.text_name
-            doc = self.nlp_preprocess(row.text)
-            
-            try:        
+            try:
+                # process text using spacy
+                doc = self.nlp_preprocess(row.text)
+                
                 # extract the quotes
                 quotes = extract_quotes(doc_id=text_id, doc=doc, 
                                         write_tree=False)
@@ -393,9 +403,8 @@ class QuotationTool():
                     
             except:
                 # this will provide some information in the case of an error
-                self.app_logger.exception("message")
-                traceback.print_exception()
-            
+                print('{} is too large. Consider breaking it down into smaller texts (< 1MB each file).'.format(text_name))
+                self.large_texts.append(text_name)
                 
         # convert the outcome into a pandas dataframe
         self.quotes_df = pd.DataFrame.from_dict(all_quotes)
@@ -538,7 +547,6 @@ class QuotationTool():
         # execute the code
         exec(my_code)
         
-        
         # display the preview in this notebook
         if len(locs['QUOTE'])==0 and len(locs['SPEAKER'])==0:
             print('No speakers or quotes identified in the text. Select another text.')
@@ -596,8 +604,12 @@ class QuotationTool():
                         # display the text and the selected entities
                         self.show_quotes(text_name, show_what, inc_ent)
                     except:
-                        # provide information in the case no text is selected
-                        print('Please select the text to preview')
+                        if text_name in self.large_texts:
+                            print('{} is too large. Consider breaking it down to smaller texts (< 1 MB).'.format(text_name))
+                            print('Please select another text to analyse')
+                        else:
+                            # provide information in the case no text is selected
+                            print('Please select the text to preview')
         
         # link the preview_button with the function
         preview_button.on_click(on_preview_button_clicked)
@@ -839,8 +851,12 @@ class QuotationTool():
             plt.show()
             
             return fig, bar_title
+        
+        if text_name in self.large_texts:
+            print('{} is too large. Consider breaking it down to smaller texts (< 1 MB).'.format(text_name))
+            print('Please select another text to analyse')
             
-        elif text_name!='':
+        else:
             print('No entities identified in the {}s.'.format(which_ent[:-9]))
         
         
