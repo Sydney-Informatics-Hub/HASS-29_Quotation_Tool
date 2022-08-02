@@ -112,7 +112,7 @@ class QuotationTool():
         
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
-            description='Upload your files (txt, csv or xlsx)',
+            description='Upload your files (txt, csv, xlsx or zip)',
             accept='.txt, .xlsx, .csv, .zip', # accepted file extension 
             multiple=True,  # True to accept multiple files
             error='File upload unsuccessful. Please try again!',
