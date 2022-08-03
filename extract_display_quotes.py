@@ -26,6 +26,7 @@ from collections import Counter
 import hashlib
 from tqdm import tqdm
 from zipfile import ZipFile
+from pathlib import Path
 
 # matplotlib: visualization tool
 from matplotlib import pyplot as plt
@@ -110,6 +111,7 @@ class QuotationTool():
         self.text_df = None
         self.quotes_df = None
         self.large_texts = []
+        self.large_file_size = 1000000
         
         # initiate the variables for file uploading
         self.file_uploader = widgets.FileUpload(
@@ -160,11 +162,11 @@ class QuotationTool():
         '''
         # check total uploaded file size
         total_file_size = sum([i['metadata']['size'] for i in self.file_uploader.value.values()])
-        print('The total size of the upload is {:.2f} MB.'.format(total_file_size/1000000))
+        print('The total size of the upload is {:.2f} MB.'.format(total_file_size/self.large_file_size))
         
         # display warning for individual large files (>1MB)
         large_text = [text['metadata']['name'] for text in self.file_uploader.value.values() \
-                      if text['metadata']['size']>1000000 and \
+                      if text['metadata']['size']>self.large_file_size and \
                           text['metadata']['name'].endswith('.txt')]
         if len(large_text)>0:
             print('The following file(s) are larger than 1MB:', large_text)
@@ -214,39 +216,28 @@ class QuotationTool():
         return temp
 
 
-    def load_zip(self, text_name, file_dir: str):
+    def load_zip(self, text_file):
         '''
         Load zip file
         
         Args:
-            text_name: the file containing the zipped text data
+            text_file: the file containing the zipped text data
             file_dir: the directory of the zipped file
         '''
         # create an input folder if not already exist
         os.makedirs('input', exist_ok=True)
         
         # read and decode the zip file
-        temp = io.BytesIO(text_name['content'])
+        temp = io.BytesIO(text_file['content'])
         
         # open and extract the zip file
         with ZipFile(temp, 'r') as zip:
             # extract files
             print('Extracting files...')
             zip.extractall('./input')
-        
-        # get the file directory
-        file_dir = ['./input/' if len([file for file in os.listdir('./input/') \
-                                       if file.endswith('.txt')])>0 \
-                    else './input/'+[file for file in os.listdir('./input/') \
-                                     if not file.endswith('MACOSX')][0]+'/'][0]
-        
-        # get file_names of unzipped texts
-        file_names = [file for file in os.listdir(file_dir) if file.endswith('txt')]
-        
-        return file_names, file_dir
     
     
-    def read_unzip_txt(self, file_names: list, file_dir: str) -> list:
+    def read_unzip_txt(self) -> list:
         '''
         Read the unzip text files
         
@@ -256,18 +247,19 @@ class QuotationTool():
         '''
         print('Reading extracted files...')
         unzip_texts = []
+        files = [file for file in Path('./input').rglob('*.txt') if 'MACOSX' not in str(file)]
         try:
             # read the unzip text file
-            for file in tqdm(file_names, total=len(file_names)):
-                with open(file_dir+file) as f:
-                    temp = {'text_name': file,
+            for file in tqdm(files, total=len(files)):
+                with open(file) as f:
+                    temp = {'text_name': file.name[:-4],
                             'text': f.read()
                     }
                 # store in unzip_texts
                 unzip_texts.extend([temp])
                 
                 # remove file from the directory
-                os.remove(file_dir+file)
+                os.remove(file)
         except:
             # display warning if there are any issues
             print('We are having problem uploading your zip file. Please refer to user guide for further detail.')
@@ -319,8 +311,8 @@ class QuotationTool():
         print('This may take a while...')
         for file in tqdm(files):
             if file.lower().endswith('zip'):
-                file_names, file_dir = self.load_zip(self.file_uploader.value[file], file)
-                text_dic = self.read_unzip_txt(file_names, file_dir)
+                self.load_zip(self.file_uploader.value[file])
+                text_dic = self.read_unzip_txt()
             elif file.lower().endswith('txt'):
                 text_dic = self.load_txt(self.file_uploader.value[file])
             else:
