@@ -222,7 +222,6 @@ class QuotationTool():
         
         Args:
             text_file: the file containing the zipped text data
-            file_dir: the directory of the zipped file
         '''
         # create an input folder if not already exist
         os.makedirs('input', exist_ok=True)
@@ -240,10 +239,6 @@ class QuotationTool():
     def read_unzip_txt(self) -> list:
         '''
         Read the unzip text files
-        
-        Args:
-            file_names the name of the text files
-            file_dir: the directory of the zipped file
         '''
         print('Reading extracted files...')
         unzip_texts = []
